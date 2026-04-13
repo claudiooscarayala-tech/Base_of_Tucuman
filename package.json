@@ -1,9 +1,13 @@
 {
-  "name": "backend",
+  "name": "app-para-agencia-para-enviar-mensajes-a-clientes",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
+    "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -11,14 +15,11 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
-    "@prisma/client": "^5.11.0",
-    "axios": "^1.15.0",
     "cors": "^2.8.6",
-    "dotenv": "^17.4.1",
-    "express": "^5.2.1"
-  },
-  "devDependencies": {
-    "prisma": "^5.11.0"
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "node-cron": "^4.2.1",
+    "sqlite3": "^6.0.1",
+    "xlsx": "^0.18.5"
   }
 }

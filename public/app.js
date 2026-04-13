@@ -103,7 +103,7 @@ async function fetchPolizas(query = '', dateValue = '') {
                     <strong>${p.asegurado}</strong><br>
                     <small style="color: var(--text-secondary)">Reg: ${p.nro_registro || '-'}</small>
                 </td>
-                <td>${phoneStr}</td>
+                <td><input type="text" value="${p.telefono || ''}" class="status-select" id="phone-${p.id}" style="width: 120px;" placeholder="Ej: 54938..." /></td>
                 <td>${p.compania || '-'}</td>
                 <td>${p.nro_poliza || '-'}</td>
                 <td>${p.patente || '-'}</td>
@@ -153,6 +153,7 @@ async function updatePoliza(id, prefix = '') {
     const selVtoPol = document.getElementById(`${prefix}vtopol-${id}`).value;
     const selTipo = document.getElementById(`${prefix}tipo-${id}`).value;
     const selFp = document.getElementById(`${prefix}fp-${id}`).value;
+    const phoneEl = document.getElementById(`${prefix}phone-${id}`);
     
     try {
         // Fetch current policy to retain other fields safely
@@ -168,7 +169,7 @@ async function updatePoliza(id, prefix = '') {
                 vto_poliza: selVtoPol,
                 forma_pago: selFp,
                 tipo_vehiculo: selTipo,
-                telefono: current ? current.telefono : '',
+                telefono: phoneEl ? phoneEl.value : (current ? current.telefono : ''),
                 mail: current ? current.mail : ''
             })
         });

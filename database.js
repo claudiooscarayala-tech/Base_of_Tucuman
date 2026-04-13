@@ -1,7 +1,23 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
-const dbPath = path.resolve(__dirname, 'database.sqlite');
+// Check if a persistent DATA_PATH is provided (e.g. /data for Railway)
+const dataPath = process.env.DATA_PATH;
+let dbPath = path.resolve(__dirname, 'database.sqlite');
+
+if (dataPath) {
+    const persistentDbPath = path.resolve(dataPath, 'database.sqlite');
+    
+    // If the persistent DB doesn't exist yet, but we uploaded one to GitHub, copy it over!
+    if (!fs.existsSync(persistentDbPath) && fs.existsSync(dbPath)) {
+        console.log('Copiando base de datos inicial al volumen persistente...');
+        fs.copyFileSync(dbPath, persistentDbPath);
+    }
+    
+    dbPath = persistentDbPath;
+}
+
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Error connecting to the database:', err.message);

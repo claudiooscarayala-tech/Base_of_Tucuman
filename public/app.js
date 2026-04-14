@@ -219,7 +219,10 @@ window.setSandraFilter = function(filterVal) {
 
 async function fetchSandra() {
     try {
-        const response = await fetch(`${API_URL}/sandra`);
+        const query = document.getElementById('sandraSearchInput') ? document.getElementById('sandraSearchInput').value : '';
+        const dateFilter = document.getElementById('sandraSearchDateInput') ? document.getElementById('sandraSearchDateInput').value : '';
+
+        const response = await fetch(`${API_URL}/sandra?q=${encodeURIComponent(query)}&vto=${encodeURIComponent(dateFilter)}`);
         let allPolizas = await response.json();
         
         // Calculate KPI counts
@@ -284,6 +287,14 @@ async function fetchSandra() {
                     <input type="date" value="${datePolStr}" class="status-select" id="sandra-vtopol-${p.id}" />
                 </td>
                 <td>
+                    <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem; margin-bottom: 5px; width: 100%;" onclick="updateSandra(${p.id})">
+                        Guardar
+                    </button><br>
+                    <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem; width: 100%; background: #ef4444; border-color: #dc2626;" onclick="enviarHistorico(${p.id})">
+                        A Histórico
+                    </button>
+                </td>
+                <td>
                     <select class="status-select" id="sandra-fp-${p.id}">
                         <option value="Efectivo con cupón" ${p.forma_pago === 'Efectivo con cupón' || !p.forma_pago ? 'selected' : ''}>Efectivo con cupón</option>
                         <option value="CBU" ${p.forma_pago === 'CBU' ? 'selected' : ''}>CBU</option>
@@ -295,14 +306,6 @@ async function fetchSandra() {
                         <option value="Pendiente" ${p.estado_pago === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
                         <option value="Pagado" ${p.estado_pago === 'Pagado' ? 'selected' : ''}>Pagado</option>
                     </select>
-                </td>
-                <td>
-                    <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem; margin-bottom: 5px; width: 100%;" onclick="updateSandra(${p.id})">
-                        Guardar
-                    </button><br>
-                    <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem; width: 100%; background: #ef4444; border-color: #dc2626;" onclick="enviarHistorico(${p.id})">
-                        A Histórico
-                    </button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -499,6 +502,17 @@ function initSearch() {
     searchDateInput.addEventListener('change', () => {
         fetchPolizas(searchInput.value, searchDateInput.value);
     });
+    
+    // Sandra Search logic
+    const btnSandraSearch = document.getElementById('btnSandraSearch');
+    const sandraSearchInput = document.getElementById('sandraSearchInput');
+    const sandraSearchDateInput = document.getElementById('sandraSearchDateInput');
+
+    if (btnSandraSearch) {
+        btnSandraSearch.addEventListener('click', () => { fetchSandra(); });
+        sandraSearchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') fetchSandra(); });
+        sandraSearchDateInput.addEventListener('change', () => { fetchSandra(); });
+    }
     
     // Historico Search logic
     const btnHistorico = document.getElementById('btnHistorico');

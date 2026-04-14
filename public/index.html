@@ -91,8 +91,14 @@
                 <!-- Panel de Sandra -->
                 <section id="tab-sandra" class="tab-pane hidden fade-in">
                     <div class="card glass-effect">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                            <h2>Vencimientos a la Fecha <span id="count-sandra" class="badge badge-warning" style="font-size: 1rem; margin-left: 10px;">0</span></h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 10px;">
+                            <h2 style="margin: 0;">Vencimientos a la Fecha <span id="count-sandra" class="badge badge-warning" style="font-size: 1rem; margin-left: 10px;">0</span></h2>
+                            
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="sandraSearchInput" placeholder="Asegurado, póliza..." style="padding: 8px 12px; border-radius: 8px; background: var(--surface-light); border: 1px solid var(--border-color); color: white; outline: none; width: 220px; font-size: 0.9rem;" />
+                                <input type="date" id="sandraSearchDateInput" style="padding: 8px 12px; border-radius: 8px; background: var(--surface-light); border: 1px solid var(--border-color); color: white; outline: none; width: 140px; font-size: 0.9rem;" />
+                                <button id="btnSandraSearch" class="btn btn-primary" style="padding: 8px 15px; font-size: 0.9rem;">Buscar</button>
+                            </div>
                         </div>
                         <p class="subtitle">Pólizas con Vto de Cuota vencido o que vencen HOY.</p>
                         
@@ -131,9 +137,9 @@
                                         <th>Tipo</th>
                                         <th>Vto Cuota</th>
                                         <th>Vto Póliza</th>
+                                        <th>Acción</th>
                                         <th>Forma Pago</th>
                                         <th>Estado Pago</th>
-                                        <th>Acción</th>
                                     </tr>
                                 </thead>
                                 <tbody>

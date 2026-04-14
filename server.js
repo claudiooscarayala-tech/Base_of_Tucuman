@@ -45,6 +45,8 @@ app.get('/api/polizas', (req, res) => {
 
 // Sandra's endpoint: all policies with vto_cuota <= today (excluding historical ones)
 app.get('/api/sandra', (req, res) => {
+    const search = req.query.q || "";
+    const dateFilter = req.query.vto || "";
     const todayStr = new Date().toISOString().split('T')[0];
     const targetDateObj = new Date(todayStr + "T12:00:00");
     targetDateObj.setDate(targetDateObj.getDate() - 120);
@@ -53,13 +55,15 @@ app.get('/api/sandra', (req, res) => {
     db.all(
         `SELECT * FROM polizas 
          WHERE IFNULL(vto_cuota, '') != '' AND vto_cuota <= ?
+         AND (asegurado LIKE ? OR patente LIKE ? OR nro_poliza LIKE ?)
+         AND (? = '' OR vto_cuota = ?)
          AND IFNULL(estado_pago, '') != 'Archivado'
          AND NOT (
              (IFNULL(vto_poliza, '') != '' AND vto_poliza < ?) 
              OR (IFNULL(vto_poliza, '') = '' AND IFNULL(vto_cuota, '') != '' AND vto_cuota < ?)
          )
          ORDER BY vto_cuota DESC`,
-        [todayStr, targetDate, targetDate],
+        [todayStr, `%${search}%`, `%${search}%`, `%${search}%`, dateFilter, dateFilter, targetDate, targetDate],
         (err, rows) => {
             if (err) return res.status(500).json({ error: err.message });
             res.json(rows);
@@ -93,12 +97,12 @@ app.get('/api/historico', (req, res) => {
 // Update a policy (e.g. mark as Paid)
 app.put('/api/polizas/:id', (req, res) => {
     const id = req.params.id;
-    const { estado_pago, vto_cuota, telefono, mail, forma_pago, tipo_vehiculo, vto_poliza } = req.body;
+    const { estado_pago, vto_cuota, telefono, mail, forma_pago, tipo_vehiculo, vto_poliza, compania, nro_poliza, patente } = req.body;
     
     // basic dynamic update
     db.run(
-        `UPDATE polizas SET estado_pago = ?, vto_cuota = ?, telefono = ?, mail = ?, forma_pago = ?, tipo_vehiculo = ?, vto_poliza = ? WHERE id = ?`,
-        [estado_pago, vto_cuota, telefono, mail, forma_pago, tipo_vehiculo, vto_poliza, id],
+        `UPDATE polizas SET estado_pago = ?, vto_cuota = ?, telefono = ?, mail = ?, forma_pago = ?, tipo_vehiculo = ?, vto_poliza = ?, compania = ?, nro_poliza = ?, patente = ? WHERE id = ?`,
+        [estado_pago, vto_cuota, telefono, mail, forma_pago, tipo_vehiculo, vto_poliza, compania, nro_poliza, patente, id],
         function(err) {
             if (err) return res.status(500).json({ error: err.message });
             res.json({ updated: this.changes });
@@ -128,6 +132,20 @@ app.get('/api/logs', (req, res) => {
         LEFT JOIN polizas p ON l.poliza_id = p.id
         ORDER BY l.fecha_envio DESC LIMIT 200
     `, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+// Get message logs for a specific policy
+app.get('/api/polizas/:id/logs', (req, res) => {
+    const id = req.params.id;
+    db.all(`
+        SELECT * 
+        FROM message_logs 
+        WHERE poliza_id = ?
+        ORDER BY fecha_envio DESC
+    `, [id], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });

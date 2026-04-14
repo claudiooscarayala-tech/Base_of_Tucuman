@@ -104,9 +104,9 @@ async function fetchPolizas(query = '', dateValue = '') {
                     <small style="color: var(--text-secondary)">Reg: ${p.nro_registro || '-'}</small>
                 </td>
                 <td><input type="text" value="${p.telefono || ''}" class="status-select" id="phone-${p.id}" style="width: 120px;" placeholder="Ej: 54938..." /></td>
-                <td>${p.compania || '-'}</td>
-                <td>${p.nro_poliza || '-'}</td>
-                <td>${p.patente || '-'}</td>
+                <td><input type="text" value="${p.compania || ''}" class="status-select" id="cia-${p.id}" style="width: 100px;" placeholder="Cía..." /></td>
+                <td><input type="text" value="${p.nro_poliza || ''}" class="status-select" id="pol-${p.id}" style="width: 100px;" placeholder="Póliza..." /></td>
+                <td><input type="text" value="${p.patente || ''}" class="status-select" id="pat-${p.id}" style="width: 80px;" placeholder="Patente..." /></td>
                 <td>
                     <select class="status-select" id="tipo-${p.id}" style="width: 110px;">
                         <option value="Automotor" ${p.tipo_vehiculo === 'Automotor' || !p.tipo_vehiculo ? 'selected' : ''}>Automotor</option>
@@ -118,6 +118,14 @@ async function fetchPolizas(query = '', dateValue = '') {
                 </td>
                 <td>
                     <input type="date" value="${datePolStr}" class="status-select" id="vtopol-${p.id}" />
+                </td>
+                <td>
+                    <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem; margin-bottom: 5px; width: 100%;" onclick="updatePoliza(${p.id})">
+                        Guardar
+                    </button><br>
+                    <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem; width: 100%; background: #ef4444; border-color: #dc2626;" onclick="enviarHistorico(${p.id})">
+                        A Histórico
+                    </button>
                 </td>
                 <td>
                     <select class="status-select" id="fp-${p.id}">
@@ -133,8 +141,8 @@ async function fetchPolizas(query = '', dateValue = '') {
                     </select>
                 </td>
                 <td>
-                    <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="updatePoliza(${p.id})">
-                        Guardar
+                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; border: 1px solid var(--border-color); color: var(--text-primary); background: transparent;" onclick="verMensajes(${p.id})">
+                        💬 Mensajes
                     </button>
                 </td>
             `;
@@ -154,6 +162,9 @@ async function updatePoliza(id, prefix = '') {
     const selTipo = document.getElementById(`${prefix}tipo-${id}`).value;
     const selFp = document.getElementById(`${prefix}fp-${id}`).value;
     const phoneEl = document.getElementById(`${prefix}phone-${id}`);
+    const ciaEl = document.getElementById(`${prefix}cia-${id}`);
+    const polEl = document.getElementById(`${prefix}pol-${id}`);
+    const patEl = document.getElementById(`${prefix}pat-${id}`);
     
     try {
         // Fetch current policy to retain other fields safely
@@ -170,6 +181,9 @@ async function updatePoliza(id, prefix = '') {
                 forma_pago: selFp,
                 tipo_vehiculo: selTipo,
                 telefono: phoneEl ? phoneEl.value : (current ? current.telefono : ''),
+                compania: ciaEl ? ciaEl.value : (current ? current.compania : ''),
+                nro_poliza: polEl ? polEl.value : (current ? current.nro_poliza : ''),
+                patente: patEl ? patEl.value : (current ? current.patente : ''),
                 mail: current ? current.mail : ''
             })
         });
@@ -320,6 +334,9 @@ async function updateSandra(id) {
                 forma_pago: selFp,
                 tipo_vehiculo: selTipo,
                 telefono: current ? current.telefono : '',
+                compania: current ? current.compania : '',
+                nro_poliza: current ? current.nro_poliza : '',
+                patente: current ? current.patente : '',
                 mail: current ? current.mail : ''
             })
         });
@@ -357,6 +374,9 @@ async function enviarHistorico(id) {
                 forma_pago: current.forma_pago,
                 tipo_vehiculo: current.tipo_vehiculo,
                 telefono: current.telefono,
+                compania: current.compania,
+                nro_poliza: current.nro_poliza,
+                patente: current.patente,
                 mail: current.mail
             })
         });
@@ -442,6 +462,9 @@ async function activarHistorico(id) {
                 forma_pago: current.forma_pago,
                 tipo_vehiculo: current.tipo_vehiculo,
                 telefono: current.telefono,
+                compania: current.compania,
+                nro_poliza: current.nro_poliza,
+                patente: current.patente,
                 mail: current.mail
             })
         });
@@ -577,3 +600,46 @@ async function fetchLogs() {
         if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="color:red; text-align:center;">Error cargando logs: ${e.message}</td></tr>`;
     }
 }
+
+async function verMensajes(id) {
+    document.getElementById('mensajesModalContent').innerHTML = '<p style="text-align: center;">Cargando mensajes...</p>';
+    document.getElementById('mensajesModal').style.display = 'block';
+
+    try {
+        const response = await fetch(`${API_URL}/polizas/${id}/logs`);
+        const logs = await response.json();
+
+        if (!logs || logs.length === 0) {
+            document.getElementById('mensajesModalContent').innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No hay mensajes enviados a este cliente aún.</p>';
+            return;
+        }
+
+        let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
+        logs.forEach(l => {
+            const badgeType = l.tipo_aviso.includes('T-3') ? 'badge-info' 
+                            : l.tipo_aviso.includes('T+3') ? 'badge-warning' 
+                            : 'badge-warning';
+
+            let dStr = l.fecha_envio;
+            try { dStr = new Date(l.fecha_envio).toLocaleString('es-AR'); } catch(ex){}
+
+            html += `
+                <div style="background: var(--surface-color); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <strong><span class="badge ${badgeType}">${l.tipo_aviso}</span></strong>
+                        <small style="color: var(--text-secondary);">${dStr}</small>
+                    </div>
+                    <div><span style="font-size: 0.9rem;">${l.mensaje}</span></div>
+                    ${l.telefono ? `<div style="margin-top: 5px;"><small style="color: var(--text-secondary);">Enviado a: ${l.telefono}</small></div>` : ''}
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        document.getElementById('mensajesModalContent').innerHTML = html;
+    } catch (e) {
+        console.error("Error loading specific logs:", e);
+        document.getElementById('mensajesModalContent').innerHTML = `<p style="color:red; text-align:center;">Error cargando mensajes: ${e.message}</p>`;
+    }
+}
+window.verMensajes = verMensajes;

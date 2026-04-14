@@ -75,9 +75,10 @@
                                     <th>Tipo</th>
                                     <th>Vto Cuota</th>
                                     <th>Vto Póliza</th>
+                                    <th>Acción</th>
                                     <th>Forma Pago</th>
                                     <th>Estado Pago</th>
-                                    <th>Acción</th>
+                                    <th>Mensajes</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -271,6 +272,19 @@
                 </section>
             </div>
         </main>
+    </div>
+
+    <!-- Modal for Messages History -->
+    <div id="mensajesModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
+        <div class="modal-content" style="background-color: var(--surface-light); margin: 10% auto; padding: 20px; border: 1px solid var(--border-color); border-radius: 12px; width: 80%; max-width: 600px; color: var(--text-primary); box-shadow: 0 5px 15px rgba(0,0,0,0.5);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; font-family: 'Outfit';">Historial de Mensajes</h2>
+                <span class="close-modal" style="color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer;" onclick="document.getElementById('mensajesModal').style.display='none'">&times;</span>
+            </div>
+            <div id="mensajesModalContent" style="max-height: 400px; overflow-y: auto;">
+                <!-- Filled via JS -->
+            </div>
+        </div>
     </div>
 
     <script src="app.js?v=20"></script>

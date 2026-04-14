@@ -270,12 +270,20 @@ body {
     background: var(--surface-color);
     border-radius: 16px;
     overflow-x: auto;
+    overflow-y: auto;
+    max-height: calc(100vh - 240px);
     border: 1px solid var(--border-color);
 }
 
 .data-table {
     width: 100%;
     border-collapse: collapse;
+}
+
+.data-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
 .data-table th, .data-table td {

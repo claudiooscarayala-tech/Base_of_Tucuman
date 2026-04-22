@@ -11,6 +11,20 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ----------------------------------------------------
+// HELPER FUNCTIONS
+// ----------------------------------------------------
+function getTodayBA() {
+    const d = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" }));
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, '0') + "-" + String(d.getDate()).padStart(2, '0');
+}
+
+function addDaysBA(dateStr, days) {
+    const d = new Date(dateStr + "T12:00:00");
+    d.setDate(d.getDate() + days);
+    return d.toISOString().split('T')[0];
+}
+
+// ----------------------------------------------------
 // API ROUTES
 // ----------------------------------------------------
 
@@ -19,10 +33,8 @@ app.get('/api/polizas', (req, res) => {
     const search = req.query.q || "";
     const dateFilter = req.query.vto || "";
     
-    const todayStr = new Date().toISOString().split('T')[0];
-    const todayDate = new Date(todayStr + "T12:00:00");
-    todayDate.setDate(todayDate.getDate() - 120);
-    const targetDate = todayDate.toISOString().split('T')[0];
+    const todayStr = getTodayBA();
+    const targetDate = addDaysBA(todayStr, -120);
 
     const sql = `
         SELECT * FROM polizas 
@@ -43,18 +55,29 @@ app.get('/api/polizas', (req, res) => {
     });
 });
 
-// Sandra's endpoint: all policies with vto_cuota <= today (excluding historical ones)
-app.get('/api/sandra', (req, res) => {
+function sendVencidosResponse(req, res, minDays, maxDays) {
     const search = req.query.q || "";
     const dateFilter = req.query.vto || "";
-    const todayStr = new Date().toISOString().split('T')[0];
-    const targetDateObj = new Date(todayStr + "T12:00:00");
-    targetDateObj.setDate(targetDateObj.getDate() - 120);
-    const targetDate = targetDateObj.toISOString().split('T')[0];
+    const todayStr = getTodayBA();
+    
+    // Calculate maxDate and minDate based on T - minDays and T - maxDays
+    const maxDateStr = minDays !== null ? addDaysBA(todayStr, -minDays) : null;
+    const minDateStr = maxDays !== null ? addDaysBA(todayStr, -maxDays) : null;
+    
+    const targetDate = addDaysBA(todayStr, -120);
+
+    let dateCond = "";
+    if (maxDateStr !== null && minDateStr !== null) {
+        dateCond = `vto_cuota <= '${maxDateStr}' AND vto_cuota >= '${minDateStr}'`;
+    } else if (maxDateStr !== null) {
+        dateCond = `vto_cuota <= '${maxDateStr}'`;
+    } else if (minDateStr !== null) {
+        dateCond = `vto_cuota >= '${minDateStr}'`;
+    }
 
     db.all(
         `SELECT * FROM polizas 
-         WHERE IFNULL(vto_cuota, '') != '' AND vto_cuota <= ?
+         WHERE IFNULL(vto_cuota, '') != '' AND ${dateCond}
          AND (asegurado LIKE ? OR patente LIKE ? OR nro_poliza LIKE ?)
          AND (? = '' OR vto_cuota = ?)
          AND IFNULL(estado_pago, '') != 'Archivado'
@@ -63,21 +86,31 @@ app.get('/api/sandra', (req, res) => {
              OR (IFNULL(vto_poliza, '') = '' AND IFNULL(vto_cuota, '') != '' AND vto_cuota < ?)
          )
          ORDER BY vto_cuota DESC`,
-        [todayStr, `%${search}%`, `%${search}%`, `%${search}%`, dateFilter, dateFilter, targetDate, targetDate],
+        [`%${search}%`, `%${search}%`, `%${search}%`, dateFilter, dateFilter, targetDate, targetDate],
         (err, rows) => {
             if (err) return res.status(500).json({ error: err.message });
             res.json(rows);
         }
     );
-});
+}
+
+// Sandra: T to T-10
+app.get('/api/sandra', (req, res) => sendVencidosResponse(req, res, 0, 10));
+
+// Rocio: T-11 to T-20
+app.get('/api/rocio', (req, res) => sendVencidosResponse(req, res, 11, 20));
+
+// Agustin: T-21 to T-30
+app.get('/api/agustin', (req, res) => sendVencidosResponse(req, res, 21, 30));
+
+// Patricia: T-31 and beyond
+app.get('/api/patricia', (req, res) => sendVencidosResponse(req, res, 31, null));
 
 // Historico endpoint: policies where vto_poliza < today - 120 days (or vto_cuota if poliza is null)
 app.get('/api/historico', (req, res) => {
     const search = req.query.q || "";
-    const todayStr = new Date().toISOString().split('T')[0];
-    const todayDate = new Date(todayStr + "T12:00:00");
-    todayDate.setDate(todayDate.getDate() - 120);
-    const targetDate = todayDate.toISOString().split('T')[0];
+    const todayStr = getTodayBA();
+    const targetDate = addDaysBA(todayStr, -120);
 
     db.all(
         `SELECT * FROM polizas 
@@ -289,10 +322,10 @@ async function processDailyNotifications() {
     });
 }
 
-// Ensure crontab runs every morning at 09:00 AM (DISABLED PER USER REQUEST)
-// cron.schedule('0 9 * * *', () => {
-//     processDailyNotifications();
-// });
+// Ensure crontab runs every morning at 09:00 AM
+cron.schedule('0 9 * * *', () => {
+    processDailyNotifications();
+});
 
 
 // ----------------------------------------------------

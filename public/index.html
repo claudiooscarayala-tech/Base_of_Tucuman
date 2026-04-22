@@ -26,6 +26,15 @@
                 <button class="nav-btn" data-tab="tab-sandra">
                     <span class="icon">👩‍💼</span> Sandra (Vencidos)
                 </button>
+                <button class="nav-btn" data-tab="tab-rocio">
+                    <span class="icon">👩‍💼</span> Rocio (Vencidos)
+                </button>
+                <button class="nav-btn" data-tab="tab-agustin">
+                    <span class="icon">👨‍💼</span> Agustin (Vencidos)
+                </button>
+                <button class="nav-btn" data-tab="tab-patricia">
+                    <span class="icon">👩‍💼</span> Patricia (Vencidos)
+                </button>
                 <button class="nav-btn" data-tab="tab-historico">
                     <span class="icon">🏛️</span> Histórico
                 </button>
@@ -127,6 +136,192 @@
 
                         <div class="table-container mt-2">
                             <table class="data-table" id="tableSandra">
+                                <thead>
+                                    <tr>
+                                        <th>Asegurado</th>
+                                        <th>Teléfono</th>
+                                        <th>Compañía</th>
+                                        <th>Póliza</th>
+                                        <th>Patente</th>
+                                        <th>Tipo</th>
+                                        <th>Vto Cuota</th>
+                                        <th>Vto Póliza</th>
+                                        <th>Acción</th>
+                                        <th>Forma Pago</th>
+                                        <th>Estado Pago</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Panel de Rocio -->
+                <section id="tab-rocio" class="tab-pane hidden fade-in">
+                    <div class="card glass-effect">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 10px;">
+                            <h2 style="margin: 0;">Vencimientos a la Fecha <span id="count-rocio" class="badge badge-warning" style="font-size: 1rem; margin-left: 10px;">0</span></h2>
+                            
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="rocioSearchInput" placeholder="Asegurado, póliza..." style="padding: 8px 12px; border-radius: 8px; background: var(--surface-light); border: 1px solid var(--border-color); color: white; outline: none; width: 220px; font-size: 0.9rem;" />
+                                <input type="date" id="rocioSearchDateInput" style="padding: 8px 12px; border-radius: 8px; background: var(--surface-light); border: 1px solid var(--border-color); color: white; outline: none; width: 140px; font-size: 0.9rem;" />
+                                <button id="btnRocioSearch" class="btn btn-primary" style="padding: 8px 15px; font-size: 0.9rem;">Buscar</button>
+                            </div>
+                        </div>
+                        <p class="subtitle">Pólizas vencidas entre T-11 y T-20.</p>
+                        
+                        <div class="kpi-cards-container">
+                            <div class="kpi-card active-filter" id="cardFpTodos" onclick="setRocioFilter('')">
+                                <div class="kpi-icon"></div>
+                                <h3 id="count-rocio-todos">0</h3>
+                                <p>TODAS LAS PÓLIZAS</p>
+                            </div>
+                            <div class="kpi-card" id="cardFpEfectivo" onclick="setRocioFilter('Efectivo con cupón')">
+                                <div class="kpi-icon"></div>
+                                <h3 id="count-rocio-efectivo">0</h3>
+                                <p>EFECTIVO</p>
+                            </div>
+                            <div class="kpi-card" id="cardFpCBU" onclick="setRocioFilter('CBU')">
+                                <div class="kpi-icon"></div>
+                                <h3 id="count-rocio-cbu">0</h3>
+                                <p>CBU</p>
+                            </div>
+                            <div class="kpi-card" id="cardFpTarjeta" onclick="setRocioFilter('Tarjeta de Crédito')">
+                                <div class="kpi-icon"></div>
+                                <h3 id="count-rocio-tarjeta">0</h3>
+                                <p>TARJETA DE CRÉDITO</p>
+                            </div>
+                        </div>
+
+                        <div class="table-container mt-2">
+                            <table class="data-table" id="tableRocio">
+                                <thead>
+                                    <tr>
+                                        <th>Asegurado</th>
+                                        <th>Teléfono</th>
+                                        <th>Compañía</th>
+                                        <th>Póliza</th>
+                                        <th>Patente</th>
+                                        <th>Tipo</th>
+                                        <th>Vto Cuota</th>
+                                        <th>Vto Póliza</th>
+                                        <th>Acción</th>
+                                        <th>Forma Pago</th>
+                                        <th>Estado Pago</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Panel de Agustin -->
+                <section id="tab-agustin" class="tab-pane hidden fade-in">
+                    <div class="card glass-effect">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 10px;">
+                            <h2 style="margin: 0;">Vencimientos a la Fecha <span id="count-agustin" class="badge badge-warning" style="font-size: 1rem; margin-left: 10px;">0</span></h2>
+                            
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="agustinSearchInput" placeholder="Asegurado, póliza..." style="padding: 8px 12px; border-radius: 8px; background: var(--surface-light); border: 1px solid var(--border-color); color: white; outline: none; width: 220px; font-size: 0.9rem;" />
+                                <input type="date" id="agustinSearchDateInput" style="padding: 8px 12px; border-radius: 8px; background: var(--surface-light); border: 1px solid var(--border-color); color: white; outline: none; width: 140px; font-size: 0.9rem;" />
+                                <button id="btnAgustinSearch" class="btn btn-primary" style="padding: 8px 15px; font-size: 0.9rem;">Buscar</button>
+                            </div>
+                        </div>
+                        <p class="subtitle">Pólizas vencidas entre T-21 y T-30.</p>
+                        
+                        <div class="kpi-cards-container">
+                            <div class="kpi-card active-filter" id="cardFpTodos" onclick="setAgustinFilter('')">
+                                <div class="kpi-icon"></div>
+                                <h3 id="count-agustin-todos">0</h3>
+                                <p>TODAS LAS PÓLIZAS</p>
+                            </div>
+                            <div class="kpi-card" id="cardFpEfectivo" onclick="setAgustinFilter('Efectivo con cupón')">
+                                <div class="kpi-icon"></div>
+                                <h3 id="count-agustin-efectivo">0</h3>
+                                <p>EFECTIVO</p>
+                            </div>
+                            <div class="kpi-card" id="cardFpCBU" onclick="setAgustinFilter('CBU')">
+                                <div class="kpi-icon"></div>
+                                <h3 id="count-agustin-cbu">0</h3>
+                                <p>CBU</p>
+                            </div>
+                            <div class="kpi-card" id="cardFpTarjeta" onclick="setAgustinFilter('Tarjeta de Crédito')">
+                                <div class="kpi-icon"></div>
+                                <h3 id="count-agustin-tarjeta">0</h3>
+                                <p>TARJETA DE CRÉDITO</p>
+                            </div>
+                        </div>
+
+                        <div class="table-container mt-2">
+                            <table class="data-table" id="tableAgustin">
+                                <thead>
+                                    <tr>
+                                        <th>Asegurado</th>
+                                        <th>Teléfono</th>
+                                        <th>Compañía</th>
+                                        <th>Póliza</th>
+                                        <th>Patente</th>
+                                        <th>Tipo</th>
+                                        <th>Vto Cuota</th>
+                                        <th>Vto Póliza</th>
+                                        <th>Acción</th>
+                                        <th>Forma Pago</th>
+                                        <th>Estado Pago</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Panel de Patricia -->
+                <section id="tab-patricia" class="tab-pane hidden fade-in">
+                    <div class="card glass-effect">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 10px;">
+                            <h2 style="margin: 0;">Vencimientos a la Fecha <span id="count-patricia" class="badge badge-warning" style="font-size: 1rem; margin-left: 10px;">0</span></h2>
+                            
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="patriciaSearchInput" placeholder="Asegurado, póliza..." style="padding: 8px 12px; border-radius: 8px; background: var(--surface-light); border: 1px solid var(--border-color); color: white; outline: none; width: 220px; font-size: 0.9rem;" />
+                                <input type="date" id="patriciaSearchDateInput" style="padding: 8px 12px; border-radius: 8px; background: var(--surface-light); border: 1px solid var(--border-color); color: white; outline: none; width: 140px; font-size: 0.9rem;" />
+                                <button id="btnPatriciaSearch" class="btn btn-primary" style="padding: 8px 15px; font-size: 0.9rem;">Buscar</button>
+                            </div>
+                        </div>
+                        <p class="subtitle">Pólizas vencidas de T-31 en adelante.</p>
+                        
+                        <div class="kpi-cards-container">
+                            <div class="kpi-card active-filter" id="cardFpTodos" onclick="setPatriciaFilter('')">
+                                <div class="kpi-icon"></div>
+                                <h3 id="count-patricia-todos">0</h3>
+                                <p>TODAS LAS PÓLIZAS</p>
+                            </div>
+                            <div class="kpi-card" id="cardFpEfectivo" onclick="setPatriciaFilter('Efectivo con cupón')">
+                                <div class="kpi-icon"></div>
+                                <h3 id="count-patricia-efectivo">0</h3>
+                                <p>EFECTIVO</p>
+                            </div>
+                            <div class="kpi-card" id="cardFpCBU" onclick="setPatriciaFilter('CBU')">
+                                <div class="kpi-icon"></div>
+                                <h3 id="count-patricia-cbu">0</h3>
+                                <p>CBU</p>
+                            </div>
+                            <div class="kpi-card" id="cardFpTarjeta" onclick="setPatriciaFilter('Tarjeta de Crédito')">
+                                <div class="kpi-icon"></div>
+                                <h3 id="count-patricia-tarjeta">0</h3>
+                                <p>TARJETA DE CRÉDITO</p>
+                            </div>
+                        </div>
+
+                        <div class="table-container mt-2">
+                            <table class="data-table" id="tablePatricia">
                                 <thead>
                                     <tr>
                                         <th>Asegurado</th>

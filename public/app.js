@@ -34,6 +34,9 @@ function initTabs() {
                 if(tabId === 'tab-search') fetchPolizas();
                 if(tabId === 'tab-logs') fetchLogs();
                 if(tabId === 'tab-sandra') fetchSandra();
+                if(tabId === 'tab-rocio') fetchRocio();
+                if(tabId === 'tab-agustin') fetchAgustin();
+                if(tabId === 'tab-patricia') fetchPatricia();
                 if(tabId === 'tab-historico') fetchHistorico();
             }
         });
@@ -270,7 +273,7 @@ async function fetchSandra() {
                     <strong>${p.asegurado}</strong><br>
                     <small style="color: var(--text-secondary)">Reg: ${p.nro_registro || '-'}</small>
                 </td>
-                <td>${phoneStr}</td>
+                <td><input type="text" value="${p.telefono || ''}" class="status-select" id="sandra-phone-${p.id}" style="width: 120px;" placeholder="Ej: 54938..." /></td>
                 <td>${p.compania || '-'}</td>
                 <td>${p.nro_poliza || '-'}</td>
                 <td>${p.patente || '-'}</td>
@@ -321,6 +324,7 @@ async function updateSandra(id) {
     const selPolDate = document.getElementById(`sandra-vtopol-${id}`).value;
     const selTipo = document.getElementById(`sandra-tipo-${id}`).value;
     const selFp = document.getElementById(`sandra-fp-${id}`).value;
+    const phoneEl = document.getElementById(`sandra-phone-${id}`);
     
     try {
         const resCurrent = await fetch(`${API_URL}/polizas?q=`);
@@ -336,7 +340,7 @@ async function updateSandra(id) {
                 vto_poliza: selPolDate,
                 forma_pago: selFp,
                 tipo_vehiculo: selTipo,
-                telefono: current ? current.telefono : '',
+                telefono: phoneEl ? phoneEl.value : (current ? current.telefono : ''),
                 compania: current ? current.compania : '',
                 nro_poliza: current ? current.nro_poliza : '',
                 patente: current ? current.patente : '',
@@ -358,6 +362,492 @@ async function updateSandra(id) {
     }
 }
 window.updateSandra = updateSandra;
+
+let currentRocioFilter = '';
+
+window.setRocioFilter = function(filterVal) {
+    currentRocioFilter = filterVal;
+    
+    // Update active UI classes
+    document.getElementById('cardFpTodos').classList.remove('active-filter');
+    document.getElementById('cardFpEfectivo').classList.remove('active-filter');
+    document.getElementById('cardFpCBU').classList.remove('active-filter');
+    document.getElementById('cardFpTarjeta').classList.remove('active-filter');
+    
+    if(filterVal === '') document.getElementById('cardFpTodos').classList.add('active-filter');
+    if(filterVal === 'Efectivo con cupón') document.getElementById('cardFpEfectivo').classList.add('active-filter');
+    if(filterVal === 'CBU') document.getElementById('cardFpCBU').classList.add('active-filter');
+    if(filterVal === 'Tarjeta de Crédito') document.getElementById('cardFpTarjeta').classList.add('active-filter');
+    
+    fetchRocio();
+}
+
+async function fetchRocio() {
+    try {
+        const query = document.getElementById('rocioSearchInput') ? document.getElementById('rocioSearchInput').value : '';
+        const dateFilter = document.getElementById('rocioSearchDateInput') ? document.getElementById('rocioSearchDateInput').value : '';
+
+        const response = await fetch(`${API_URL}/rocio?q=${encodeURIComponent(query)}&vto=${encodeURIComponent(dateFilter)}`);
+        let allPolizas = await response.json();
+        
+        // Calculate KPI counts
+        const countTodos = allPolizas.length;
+        const countEfectivo = allPolizas.filter(p => (p.forma_pago || 'Efectivo con cupón') === 'Efectivo con cupón').length;
+        const countCBU = allPolizas.filter(p => p.forma_pago === 'CBU').length;
+        const countTarjeta = allPolizas.filter(p => p.forma_pago === 'Tarjeta de Crédito').length;
+        
+        // Update KPI Cards DOM
+        document.getElementById('count-rocio-todos').innerText = countTodos;
+        document.getElementById('count-rocio-efectivo').innerText = countEfectivo;
+        document.getElementById('count-rocio-cbu').innerText = countCBU;
+        document.getElementById('count-rocio-tarjeta').innerText = countTarjeta;
+        
+        let polizas = allPolizas;
+        if (currentRocioFilter) {
+            polizas = allPolizas.filter(p => (p.forma_pago || 'Efectivo con cupón') === currentRocioFilter);
+        }
+        
+        document.getElementById('count-rocio').innerText = polizas.length;
+        
+        const tbody = document.querySelector('#tableRocio tbody');
+        tbody.innerHTML = '';
+
+        if(polizas.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No hay clientes con cuotas vencidas hoy.</td></tr>';
+            return;
+        }
+
+        polizas.forEach(p => {
+            const tr = document.createElement('tr');
+            
+            // Format phone beautifully
+            const phoneStr = p.telefono || '-';
+            
+            // Date formatting
+            const dateStr = p.vto_cuota ? p.vto_cuota : '-';
+            const datePolStr = p.vto_poliza ? p.vto_poliza : '-';
+            
+            // Status badge logic
+            const statusClass = p.estado_pago === 'Pagado' ? 'badge-success' : 'badge-warning';
+
+            tr.innerHTML = `
+                <td>
+                    <strong>${p.asegurado}</strong><br>
+                    <small style="color: var(--text-secondary)">Reg: ${p.nro_registro || '-'}</small>
+                </td>
+                <td><input type="text" value="${p.telefono || ''}" class="status-select" id="rocio-phone-${p.id}" style="width: 120px;" placeholder="Ej: 54938..." /></td>
+                <td>${p.compania || '-'}</td>
+                <td>${p.nro_poliza || '-'}</td>
+                <td>${p.patente || '-'}</td>
+                <td>
+                    <select class="status-select" id="rocio-tipo-${p.id}" style="width: 110px;">
+                        <option value="Automotor" ${p.tipo_vehiculo === 'Automotor' || !p.tipo_vehiculo ? 'selected' : ''}>Automotor</option>
+                        <option value="Motovehiculo" ${p.tipo_vehiculo === 'Motovehiculo' ? 'selected' : ''}>Motovehiculo</option>
+                    </select>
+                </td>
+                <td>
+                    <input type="date" value="${dateStr}" class="status-select" id="rocio-date-${p.id}" />
+                </td>
+                <td>
+                    <input type="date" value="${datePolStr}" class="status-select" id="rocio-vtopol-${p.id}" />
+                </td>
+                <td>
+                    <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem; margin-bottom: 5px; width: 100%;" onclick="updateRocio(${p.id})">
+                        Guardar
+                    </button><br>
+                    <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem; width: 100%; background: #ef4444; border-color: #dc2626;" onclick="enviarHistorico(${p.id})">
+                        A Histórico
+                    </button>
+                </td>
+                <td>
+                    <select class="status-select" id="rocio-fp-${p.id}">
+                        <option value="Efectivo con cupón" ${p.forma_pago === 'Efectivo con cupón' || !p.forma_pago ? 'selected' : ''}>Efectivo con cupón</option>
+                        <option value="CBU" ${p.forma_pago === 'CBU' ? 'selected' : ''}>CBU</option>
+                        <option value="Tarjeta de Crédito" ${p.forma_pago === 'Tarjeta de Crédito' ? 'selected' : ''}>Tarjeta</option>
+                    </select>
+                </td>
+                <td>
+                    <select class="status-select ${statusClass}" id="rocio-status-${p.id}">
+                        <option value="Pendiente" ${p.estado_pago === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+                        <option value="Pagado" ${p.estado_pago === 'Pagado' ? 'selected' : ''}>Pagado</option>
+                    </select>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        console.error("Error loading Rocio's policies:", e);
+    }
+}
+
+async function updateRocio(id) {
+    const selStatus = document.getElementById(`rocio-status-${id}`).value;
+    const selDate = document.getElementById(`rocio-date-${id}`).value;
+    const selPolDate = document.getElementById(`rocio-vtopol-${id}`).value;
+    const selTipo = document.getElementById(`rocio-tipo-${id}`).value;
+    const selFp = document.getElementById(`rocio-fp-${id}`).value;
+    const phoneEl = document.getElementById(`rocio-phone-${id}`);
+    
+    try {
+        const resCurrent = await fetch(`${API_URL}/polizas?q=`);
+        const policies = await resCurrent.json();
+        const current = policies.find(x => x.id === id);
+        
+        const res = await fetch(`${API_URL}/polizas/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                estado_pago: selStatus, 
+                vto_cuota: selDate,
+                vto_poliza: selPolDate,
+                forma_pago: selFp,
+                tipo_vehiculo: selTipo,
+                telefono: phoneEl ? phoneEl.value : (current ? current.telefono : ''),
+                compania: current ? current.compania : '',
+                nro_poliza: current ? current.nro_poliza : '',
+                patente: current ? current.patente : '',
+                mail: current ? current.mail : ''
+            })
+        });
+        
+        if(res.ok) {
+            const selectEl = document.getElementById(`rocio-status-${id}`);
+            selectEl.className = `status-select ${selStatus === 'Pagado' ? 'badge-success' : 'badge-warning'}`;
+            alert("Póliza actualizada con éxito.");
+            // optionally refresh the list to remove paid items
+            if(selStatus === 'Pagado') {
+                fetchRocio();
+            }
+        }
+    } catch (e) {
+        console.error("Error updating", e);
+    }
+}
+window.updateRocio = updateRocio;
+
+let currentAgustinFilter = '';
+
+window.setAgustinFilter = function(filterVal) {
+    currentAgustinFilter = filterVal;
+    
+    // Update active UI classes
+    document.getElementById('cardFpTodos').classList.remove('active-filter');
+    document.getElementById('cardFpEfectivo').classList.remove('active-filter');
+    document.getElementById('cardFpCBU').classList.remove('active-filter');
+    document.getElementById('cardFpTarjeta').classList.remove('active-filter');
+    
+    if(filterVal === '') document.getElementById('cardFpTodos').classList.add('active-filter');
+    if(filterVal === 'Efectivo con cupón') document.getElementById('cardFpEfectivo').classList.add('active-filter');
+    if(filterVal === 'CBU') document.getElementById('cardFpCBU').classList.add('active-filter');
+    if(filterVal === 'Tarjeta de Crédito') document.getElementById('cardFpTarjeta').classList.add('active-filter');
+    
+    fetchAgustin();
+}
+
+async function fetchAgustin() {
+    try {
+        const query = document.getElementById('agustinSearchInput') ? document.getElementById('agustinSearchInput').value : '';
+        const dateFilter = document.getElementById('agustinSearchDateInput') ? document.getElementById('agustinSearchDateInput').value : '';
+
+        const response = await fetch(`${API_URL}/agustin?q=${encodeURIComponent(query)}&vto=${encodeURIComponent(dateFilter)}`);
+        let allPolizas = await response.json();
+        
+        // Calculate KPI counts
+        const countTodos = allPolizas.length;
+        const countEfectivo = allPolizas.filter(p => (p.forma_pago || 'Efectivo con cupón') === 'Efectivo con cupón').length;
+        const countCBU = allPolizas.filter(p => p.forma_pago === 'CBU').length;
+        const countTarjeta = allPolizas.filter(p => p.forma_pago === 'Tarjeta de Crédito').length;
+        
+        // Update KPI Cards DOM
+        document.getElementById('count-agustin-todos').innerText = countTodos;
+        document.getElementById('count-agustin-efectivo').innerText = countEfectivo;
+        document.getElementById('count-agustin-cbu').innerText = countCBU;
+        document.getElementById('count-agustin-tarjeta').innerText = countTarjeta;
+        
+        let polizas = allPolizas;
+        if (currentAgustinFilter) {
+            polizas = allPolizas.filter(p => (p.forma_pago || 'Efectivo con cupón') === currentAgustinFilter);
+        }
+        
+        document.getElementById('count-agustin').innerText = polizas.length;
+        
+        const tbody = document.querySelector('#tableAgustin tbody');
+        tbody.innerHTML = '';
+
+        if(polizas.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No hay clientes con cuotas vencidas hoy.</td></tr>';
+            return;
+        }
+
+        polizas.forEach(p => {
+            const tr = document.createElement('tr');
+            
+            // Format phone beautifully
+            const phoneStr = p.telefono || '-';
+            
+            // Date formatting
+            const dateStr = p.vto_cuota ? p.vto_cuota : '-';
+            const datePolStr = p.vto_poliza ? p.vto_poliza : '-';
+            
+            // Status badge logic
+            const statusClass = p.estado_pago === 'Pagado' ? 'badge-success' : 'badge-warning';
+
+            tr.innerHTML = `
+                <td>
+                    <strong>${p.asegurado}</strong><br>
+                    <small style="color: var(--text-secondary)">Reg: ${p.nro_registro || '-'}</small>
+                </td>
+                <td><input type="text" value="${p.telefono || ''}" class="status-select" id="agustin-phone-${p.id}" style="width: 120px;" placeholder="Ej: 54938..." /></td>
+                <td>${p.compania || '-'}</td>
+                <td>${p.nro_poliza || '-'}</td>
+                <td>${p.patente || '-'}</td>
+                <td>
+                    <select class="status-select" id="agustin-tipo-${p.id}" style="width: 110px;">
+                        <option value="Automotor" ${p.tipo_vehiculo === 'Automotor' || !p.tipo_vehiculo ? 'selected' : ''}>Automotor</option>
+                        <option value="Motovehiculo" ${p.tipo_vehiculo === 'Motovehiculo' ? 'selected' : ''}>Motovehiculo</option>
+                    </select>
+                </td>
+                <td>
+                    <input type="date" value="${dateStr}" class="status-select" id="agustin-date-${p.id}" />
+                </td>
+                <td>
+                    <input type="date" value="${datePolStr}" class="status-select" id="agustin-vtopol-${p.id}" />
+                </td>
+                <td>
+                    <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem; margin-bottom: 5px; width: 100%;" onclick="updateAgustin(${p.id})">
+                        Guardar
+                    </button><br>
+                    <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem; width: 100%; background: #ef4444; border-color: #dc2626;" onclick="enviarHistorico(${p.id})">
+                        A Histórico
+                    </button>
+                </td>
+                <td>
+                    <select class="status-select" id="agustin-fp-${p.id}">
+                        <option value="Efectivo con cupón" ${p.forma_pago === 'Efectivo con cupón' || !p.forma_pago ? 'selected' : ''}>Efectivo con cupón</option>
+                        <option value="CBU" ${p.forma_pago === 'CBU' ? 'selected' : ''}>CBU</option>
+                        <option value="Tarjeta de Crédito" ${p.forma_pago === 'Tarjeta de Crédito' ? 'selected' : ''}>Tarjeta</option>
+                    </select>
+                </td>
+                <td>
+                    <select class="status-select ${statusClass}" id="agustin-status-${p.id}">
+                        <option value="Pendiente" ${p.estado_pago === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+                        <option value="Pagado" ${p.estado_pago === 'Pagado' ? 'selected' : ''}>Pagado</option>
+                    </select>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        console.error("Error loading Agustin's policies:", e);
+    }
+}
+
+async function updateAgustin(id) {
+    const selStatus = document.getElementById(`agustin-status-${id}`).value;
+    const selDate = document.getElementById(`agustin-date-${id}`).value;
+    const selPolDate = document.getElementById(`agustin-vtopol-${id}`).value;
+    const selTipo = document.getElementById(`agustin-tipo-${id}`).value;
+    const selFp = document.getElementById(`agustin-fp-${id}`).value;
+    const phoneEl = document.getElementById(`agustin-phone-${id}`);
+    
+    try {
+        const resCurrent = await fetch(`${API_URL}/polizas?q=`);
+        const policies = await resCurrent.json();
+        const current = policies.find(x => x.id === id);
+        
+        const res = await fetch(`${API_URL}/polizas/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                estado_pago: selStatus, 
+                vto_cuota: selDate,
+                vto_poliza: selPolDate,
+                forma_pago: selFp,
+                tipo_vehiculo: selTipo,
+                telefono: phoneEl ? phoneEl.value : (current ? current.telefono : ''),
+                compania: current ? current.compania : '',
+                nro_poliza: current ? current.nro_poliza : '',
+                patente: current ? current.patente : '',
+                mail: current ? current.mail : ''
+            })
+        });
+        
+        if(res.ok) {
+            const selectEl = document.getElementById(`agustin-status-${id}`);
+            selectEl.className = `status-select ${selStatus === 'Pagado' ? 'badge-success' : 'badge-warning'}`;
+            alert("Póliza actualizada con éxito.");
+            // optionally refresh the list to remove paid items
+            if(selStatus === 'Pagado') {
+                fetchAgustin();
+            }
+        }
+    } catch (e) {
+        console.error("Error updating", e);
+    }
+}
+window.updateAgustin = updateAgustin;
+
+let currentPatriciaFilter = '';
+
+window.setPatriciaFilter = function(filterVal) {
+    currentPatriciaFilter = filterVal;
+    
+    // Update active UI classes
+    document.getElementById('cardFpTodos').classList.remove('active-filter');
+    document.getElementById('cardFpEfectivo').classList.remove('active-filter');
+    document.getElementById('cardFpCBU').classList.remove('active-filter');
+    document.getElementById('cardFpTarjeta').classList.remove('active-filter');
+    
+    if(filterVal === '') document.getElementById('cardFpTodos').classList.add('active-filter');
+    if(filterVal === 'Efectivo con cupón') document.getElementById('cardFpEfectivo').classList.add('active-filter');
+    if(filterVal === 'CBU') document.getElementById('cardFpCBU').classList.add('active-filter');
+    if(filterVal === 'Tarjeta de Crédito') document.getElementById('cardFpTarjeta').classList.add('active-filter');
+    
+    fetchPatricia();
+}
+
+async function fetchPatricia() {
+    try {
+        const query = document.getElementById('patriciaSearchInput') ? document.getElementById('patriciaSearchInput').value : '';
+        const dateFilter = document.getElementById('patriciaSearchDateInput') ? document.getElementById('patriciaSearchDateInput').value : '';
+
+        const response = await fetch(`${API_URL}/patricia?q=${encodeURIComponent(query)}&vto=${encodeURIComponent(dateFilter)}`);
+        let allPolizas = await response.json();
+        
+        // Calculate KPI counts
+        const countTodos = allPolizas.length;
+        const countEfectivo = allPolizas.filter(p => (p.forma_pago || 'Efectivo con cupón') === 'Efectivo con cupón').length;
+        const countCBU = allPolizas.filter(p => p.forma_pago === 'CBU').length;
+        const countTarjeta = allPolizas.filter(p => p.forma_pago === 'Tarjeta de Crédito').length;
+        
+        // Update KPI Cards DOM
+        document.getElementById('count-patricia-todos').innerText = countTodos;
+        document.getElementById('count-patricia-efectivo').innerText = countEfectivo;
+        document.getElementById('count-patricia-cbu').innerText = countCBU;
+        document.getElementById('count-patricia-tarjeta').innerText = countTarjeta;
+        
+        let polizas = allPolizas;
+        if (currentPatriciaFilter) {
+            polizas = allPolizas.filter(p => (p.forma_pago || 'Efectivo con cupón') === currentPatriciaFilter);
+        }
+        
+        document.getElementById('count-patricia').innerText = polizas.length;
+        
+        const tbody = document.querySelector('#tablePatricia tbody');
+        tbody.innerHTML = '';
+
+        if(polizas.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No hay clientes con cuotas vencidas hoy.</td></tr>';
+            return;
+        }
+
+        polizas.forEach(p => {
+            const tr = document.createElement('tr');
+            
+            // Format phone beautifully
+            const phoneStr = p.telefono || '-';
+            
+            // Date formatting
+            const dateStr = p.vto_cuota ? p.vto_cuota : '-';
+            const datePolStr = p.vto_poliza ? p.vto_poliza : '-';
+            
+            // Status badge logic
+            const statusClass = p.estado_pago === 'Pagado' ? 'badge-success' : 'badge-warning';
+
+            tr.innerHTML = `
+                <td>
+                    <strong>${p.asegurado}</strong><br>
+                    <small style="color: var(--text-secondary)">Reg: ${p.nro_registro || '-'}</small>
+                </td>
+                <td><input type="text" value="${p.telefono || ''}" class="status-select" id="patricia-phone-${p.id}" style="width: 120px;" placeholder="Ej: 54938..." /></td>
+                <td>${p.compania || '-'}</td>
+                <td>${p.nro_poliza || '-'}</td>
+                <td>${p.patente || '-'}</td>
+                <td>
+                    <select class="status-select" id="patricia-tipo-${p.id}" style="width: 110px;">
+                        <option value="Automotor" ${p.tipo_vehiculo === 'Automotor' || !p.tipo_vehiculo ? 'selected' : ''}>Automotor</option>
+                        <option value="Motovehiculo" ${p.tipo_vehiculo === 'Motovehiculo' ? 'selected' : ''}>Motovehiculo</option>
+                    </select>
+                </td>
+                <td>
+                    <input type="date" value="${dateStr}" class="status-select" id="patricia-date-${p.id}" />
+                </td>
+                <td>
+                    <input type="date" value="${datePolStr}" class="status-select" id="patricia-vtopol-${p.id}" />
+                </td>
+                <td>
+                    <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem; margin-bottom: 5px; width: 100%;" onclick="updatePatricia(${p.id})">
+                        Guardar
+                    </button><br>
+                    <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem; width: 100%; background: #ef4444; border-color: #dc2626;" onclick="enviarHistorico(${p.id})">
+                        A Histórico
+                    </button>
+                </td>
+                <td>
+                    <select class="status-select" id="patricia-fp-${p.id}">
+                        <option value="Efectivo con cupón" ${p.forma_pago === 'Efectivo con cupón' || !p.forma_pago ? 'selected' : ''}>Efectivo con cupón</option>
+                        <option value="CBU" ${p.forma_pago === 'CBU' ? 'selected' : ''}>CBU</option>
+                        <option value="Tarjeta de Crédito" ${p.forma_pago === 'Tarjeta de Crédito' ? 'selected' : ''}>Tarjeta</option>
+                    </select>
+                </td>
+                <td>
+                    <select class="status-select ${statusClass}" id="patricia-status-${p.id}">
+                        <option value="Pendiente" ${p.estado_pago === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+                        <option value="Pagado" ${p.estado_pago === 'Pagado' ? 'selected' : ''}>Pagado</option>
+                    </select>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        console.error("Error loading Patricia's policies:", e);
+    }
+}
+
+async function updatePatricia(id) {
+    const selStatus = document.getElementById(`patricia-status-${id}`).value;
+    const selDate = document.getElementById(`patricia-date-${id}`).value;
+    const selPolDate = document.getElementById(`patricia-vtopol-${id}`).value;
+    const selTipo = document.getElementById(`patricia-tipo-${id}`).value;
+    const selFp = document.getElementById(`patricia-fp-${id}`).value;
+    const phoneEl = document.getElementById(`patricia-phone-${id}`);
+    
+    try {
+        const resCurrent = await fetch(`${API_URL}/polizas?q=`);
+        const policies = await resCurrent.json();
+        const current = policies.find(x => x.id === id);
+        
+        const res = await fetch(`${API_URL}/polizas/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                estado_pago: selStatus, 
+                vto_cuota: selDate,
+                vto_poliza: selPolDate,
+                forma_pago: selFp,
+                tipo_vehiculo: selTipo,
+                telefono: phoneEl ? phoneEl.value : (current ? current.telefono : ''),
+                compania: current ? current.compania : '',
+                nro_poliza: current ? current.nro_poliza : '',
+                patente: current ? current.patente : '',
+                mail: current ? current.mail : ''
+            })
+        });
+        
+        if(res.ok) {
+            const selectEl = document.getElementById(`patricia-status-${id}`);
+            selectEl.className = `status-select ${selStatus === 'Pagado' ? 'badge-success' : 'badge-warning'}`;
+            alert("Póliza actualizada con éxito.");
+            // optionally refresh the list to remove paid items
+            if(selStatus === 'Pagado') {
+                fetchPatricia();
+            }
+        }
+    } catch (e) {
+        console.error("Error updating", e);
+    }
+}
+window.updatePatricia = updatePatricia;
 
 async function enviarHistorico(id) {
     if(!confirm('¿Estás seguro de enviar esta póliza al Histórico? Desaparecerá de tu lista activa.')) return;
@@ -512,6 +1002,39 @@ function initSearch() {
         btnSandraSearch.addEventListener('click', () => { fetchSandra(); });
         sandraSearchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') fetchSandra(); });
         sandraSearchDateInput.addEventListener('change', () => { fetchSandra(); });
+    }
+
+    // Rocio Search logic
+    const btnRocioSearch = document.getElementById('btnRocioSearch');
+    const rocioSearchInput = document.getElementById('rocioSearchInput');
+    const rocioSearchDateInput = document.getElementById('rocioSearchDateInput');
+
+    if (btnRocioSearch) {
+        btnRocioSearch.addEventListener('click', () => { fetchRocio(); });
+        rocioSearchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') fetchRocio(); });
+        rocioSearchDateInput.addEventListener('change', () => { fetchRocio(); });
+    }
+
+    // Agustin Search logic
+    const btnAgustinSearch = document.getElementById('btnAgustinSearch');
+    const agustinSearchInput = document.getElementById('agustinSearchInput');
+    const agustinSearchDateInput = document.getElementById('agustinSearchDateInput');
+
+    if (btnAgustinSearch) {
+        btnAgustinSearch.addEventListener('click', () => { fetchAgustin(); });
+        agustinSearchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') fetchAgustin(); });
+        agustinSearchDateInput.addEventListener('change', () => { fetchAgustin(); });
+    }
+
+    // Patricia Search logic
+    const btnPatriciaSearch = document.getElementById('btnPatriciaSearch');
+    const patriciaSearchInput = document.getElementById('patriciaSearchInput');
+    const patriciaSearchDateInput = document.getElementById('patriciaSearchDateInput');
+
+    if (btnPatriciaSearch) {
+        btnPatriciaSearch.addEventListener('click', () => { fetchPatricia(); });
+        patriciaSearchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') fetchPatricia(); });
+        patriciaSearchDateInput.addEventListener('change', () => { fetchPatricia(); });
     }
     
     // Historico Search logic

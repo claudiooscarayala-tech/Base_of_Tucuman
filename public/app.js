@@ -854,7 +854,13 @@ async function enviarHistorico(id) {
     
     try {
         const policies = await (await fetch(`${API_URL}/polizas?q=`)).json();
-        const current = policies.find(x => x.id === id);
+        let current = policies.find(x => x.id === id);
+        
+        // If not found in active (e.g. older than 120 days but showing in some panels), check historico
+        if(!current) {
+            const histPolicies = await (await fetch(`${API_URL}/historico?q=`)).json();
+            current = histPolicies.find(x => x.id === id);
+        }
         if(!current) return;
         
         const res = await fetch(`${API_URL}/polizas/${id}`, {

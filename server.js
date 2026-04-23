@@ -251,16 +251,16 @@ async function sendWhatsAppMessage(poliza, message, tipo) {
 
 async function processDailyNotifications() {
     console.log("Running Daily Notification Engine...");
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const today = getTodayBA(); // YYYY-MM-DD in BA timezone
     
     // T-3 (3 days before expiration)
-    const targetTminus3 = addDays(today, 3);
+    const targetTminus3 = addDaysBA(today, 3);
     
     // T (exact day)
     const targetT = today;
 
     // T+3 (3 days after expiration)
-    const targetTplus3 = addDays(today, -3);
+    const targetTplus3 = addDaysBA(today, -3);
 
     return new Promise((resolve, reject) => {
         // Query finding all Pendiente policies where vto_cuota matches T-3, T, or T+3 AND doesn't pay by credit card
@@ -322,9 +322,11 @@ async function processDailyNotifications() {
     });
 }
 
-// Ensure crontab runs every morning at 09:00 AM
+// Ensure crontab runs every morning at 09:00 AM (Buenos Aires Time)
 cron.schedule('0 9 * * *', () => {
     processDailyNotifications();
+}, {
+    timezone: "America/Argentina/Buenos_Aires"
 });
 
 

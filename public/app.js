@@ -940,7 +940,7 @@ async function activarHistorico(id) {
     if(!confirm('¿Estás seguro de reactivar esta póliza? (Se marcará como Pagado y volverá a la lista activa)')) return;
     
     try {
-        const resCurrent = await fetch(`${API_URL}/polizas?q=`);
+        const resCurrent = await fetch(`${API_URL}/historico?q=`);
         const policies = await resCurrent.json();
         const current = policies.find(x => x.id === id);
         if(!current) return;

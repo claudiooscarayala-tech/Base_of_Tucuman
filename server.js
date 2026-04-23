@@ -159,12 +159,23 @@ app.post('/api/polizas', (req, res) => {
 
 // Get message logs
 app.get('/api/logs', (req, res) => {
+    const dateFilter = req.query.date || "";
+    let dateCond = "";
+    const params = [];
+    
+    if (dateFilter) {
+        // Shift SQLite UTC time by -3 hours to match Argentina localized time for filtering
+        dateCond = "WHERE date(datetime(l.fecha_envio, '-3 hours')) = ?";
+        params.push(dateFilter);
+    }
+    
     db.all(`
         SELECT l.*, p.asegurado 
         FROM message_logs l
         LEFT JOIN polizas p ON l.poliza_id = p.id
+        ${dateCond}
         ORDER BY l.fecha_envio DESC LIMIT 200
-    `, [], (err, rows) => {
+    `, params, (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
@@ -187,8 +198,14 @@ app.get('/api/polizas/:id/logs', (req, res) => {
 // Manual trigger for the notification engine (for testing)
 app.post('/api/trigger-notifications', async (req, res) => {
     try {
-        await processDailyNotifications();
-        res.json({ message: 'Notifications processed successfully' });
+        const total = await processDailyNotifications();
+        // Notify admin remotely
+        await sendWhatsAppMessage(
+            { id: 0, telefono: "5493874655897" }, 
+            `🤖 *Sofía AI - Notificación de Sistema*\n\n🟢 Ejecución *MANUAL* del motor finalizada.\nSe procesaron exitosamente *${total}* mensajes correspondientes a los vencimientos vigentes.`, 
+            "Reporte Admin"
+        );
+        res.json({ message: 'Notifications processed successfully', total });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -277,9 +294,12 @@ async function processDailyNotifications() {
                 if (err) return reject(err);
 
                 console.log(`Found ${rows.length} notifications to process for Automotores (Cuotas).`);
+                
+                let totalEnviados = 0;
 
                 for (const row of rows) {
                     if (!row.telefono) continue; // skip if no phone
+                    totalEnviados++;
 
                     let message = "";
                     let tipo = "";
@@ -311,12 +331,13 @@ async function processDailyNotifications() {
                         
                         for (const row of rowsMotos) {
                             if (!row.telefono) continue;
+                            totalEnviados++;
                             const tipoMsg = "Renovación Moto (T-3)";
                             const msg = `Hola ${row.asegurado}, te informamos que dentro de 3 días se vence tu póliza de seguro de moto (${row.compania} - Patente: ${row.patente || 'S/N'}). ¿Deseas renovarla?`;
                             await sendWhatsAppMessage(row, msg, tipoMsg);
                         }
                         
-                        resolve();
+                        resolve(totalEnviados);
                     }
                 );
             }
@@ -325,8 +346,17 @@ async function processDailyNotifications() {
 }
 
 // Ensure crontab runs every morning at 09:00 AM (Buenos Aires Time)
-cron.schedule('0 9 * * *', () => {
-    processDailyNotifications();
+cron.schedule('0 9 * * *', async () => {
+    try {
+        const total = await processDailyNotifications();
+        await sendWhatsAppMessage(
+            { id: 0, telefono: "5493874655897" }, 
+            `🤖 *Sofía AI - Reporte Matutino*\n\nBuen día Claudio! ☀️\nHe finalizado el barrido automátic de notificaciones.\nSe enviaron exitosamente *${total}* recordatorios a tus clientes el día de hoy.`, 
+            "Reporte Admin"
+        );
+    } catch(err) {
+        console.error("Cron Error: ", err);
+    }
 }, {
     timezone: "America/Argentina/Buenos_Aires"
 });

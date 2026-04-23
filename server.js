@@ -216,7 +216,7 @@ async function sendWhatsAppMessage(poliza, message, tipo) {
             let cleanPhone = poliza.telefono.replace(/\D/g, '');
             // Argentina quick fix: if it starts with 54 but lacks 9, some APIs require it, but Whapi usually handles raw numbers
             
-            await fetch('https://gate.whapi.cloud/messages/text', {
+            const res = await fetch('https://gate.whapi.cloud/messages/text', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${whapiToken}`,
@@ -226,8 +226,10 @@ async function sendWhatsAppMessage(poliza, message, tipo) {
                     typing_time: 0,
                     to: `${cleanPhone}@s.whatsapp.net`,
                     body: message
-                })
+                }),
+                signal: AbortSignal.timeout(8000)
             });
+            await res.text(); // Free up the socket stream
             console.log(`Mensaje enviado exitosamente a Whapi API para ${cleanPhone}`);
         } catch (e) {
             console.error("Error enviando por Whapi:", e);

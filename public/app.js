@@ -1047,15 +1047,30 @@ function initSearch() {
     const btnHistorico = document.getElementById('btnHistorico');
     const historicoInput = document.getElementById('historicoInput');
 
-    btnHistorico.addEventListener('click', () => {
-        fetchHistorico(historicoInput.value);
-    });
-
-    historicoInput.addEventListener('keypress', (e) => {
-        if(e.key === 'Enter') {
+    if (btnHistorico) {
+        btnHistorico.addEventListener('click', () => {
             fetchHistorico(historicoInput.value);
-        }
-    });
+        });
+
+        historicoInput.addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') {
+                fetchHistorico(historicoInput.value);
+            }
+        });
+    }
+
+    // Logs Search logic
+    const btnLogsSearch = document.getElementById('btnLogsSearch');
+    const logsDateInput = document.getElementById('logsDateInput');
+    
+    if (btnLogsSearch && logsDateInput) {
+        btnLogsSearch.addEventListener('click', () => {
+            fetchLogs(logsDateInput.value);
+        });
+        logsDateInput.addEventListener('change', () => {
+            fetchLogs(logsDateInput.value);
+        });
+    }
 
     fetchPolizas();
     fetchHistorico();
@@ -1099,9 +1114,9 @@ function initForm() {
     });
 }
 
-async function fetchLogs() {
+async function fetchLogs(dateValue = '') {
     try {
-        const response = await fetch(`${API_URL}/logs`);
+        const response = await fetch(`${API_URL}/logs?date=${encodeURIComponent(dateValue)}`);
         const logs = await response.json();
         
         const tbody = document.querySelector('#tableLogs tbody');
@@ -1121,9 +1136,12 @@ async function fetchLogs() {
                                 : tipoStr.includes('T+3') ? 'badge-warning' 
                                 : 'badge-warning'; // Fallback
                 
-                // Safe date
+                // Safe date formatted to Argentina Time
                 let dStr = l.fecha_envio;
-                try { dStr = new Date(l.fecha_envio).toLocaleString('es-AR'); } catch(ex){}
+                try { 
+                    const isoStr = l.fecha_envio.replace(' ', 'T') + 'Z';
+                    dStr = new Date(isoStr).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour12: false }); 
+                } catch(ex){}
                                 
                 tr.innerHTML = `
                     <td style="white-space: nowrap">${dStr}</td>
@@ -1164,7 +1182,10 @@ async function verMensajes(id) {
                             : 'badge-warning';
 
             let dStr = l.fecha_envio;
-            try { dStr = new Date(l.fecha_envio).toLocaleString('es-AR'); } catch(ex){}
+            try { 
+                const isoStr = l.fecha_envio.replace(' ', 'T') + 'Z';
+                dStr = new Date(isoStr).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour12: false }); 
+            } catch(ex){}
 
             html += `
                 <div style="background: var(--surface-color); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">

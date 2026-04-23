@@ -451,8 +451,16 @@
                 <!-- Registro Enviados -->
                 <section id="tab-logs" class="tab-pane hidden fade-in">
                     <div class="card">
-                        <h2>Registro de Mensajes Enviados</h2>
-                        <p class="subtitle">Log diario de notificaciones de WhatsApp</p>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 0.5rem;">
+                            <div>
+                                <h2 style="margin: 0;">Registro de Mensajes Enviados</h2>
+                                <p class="subtitle" style="margin-top: 5px;">Log diario de notificaciones de WhatsApp</p>
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="date" id="logsDateInput" style="padding: 8px 12px; border-radius: 8px; background: var(--surface-light); border: 1px solid var(--border-color); color: white; outline: none; width: 140px; font-size: 0.9rem;" title="Filtrar por fecha" />
+                                <button id="btnLogsSearch" class="btn btn-primary" style="padding: 8px 15px; font-size: 0.9rem;">Filtrar</button>
+                            </div>
+                        </div>
                         <div class="table-container mt-2">
                             <table class="data-table" id="tableLogs">
                                 <thead>

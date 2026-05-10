@@ -223,7 +223,7 @@ function addDays(date, days) {
 }
 
 async function sendWhatsAppMessage(poliza, message, tipo) {
-    console.log(`[WhatsApp -> ${poliza.telefono}] ${message}`);
+    console.log(\`[WhatsApp -> \${poliza.telefono}] \${message}\`);
 
     // If WHAPI_TOKEN is configured, send the real message
     const whapiToken = process.env.WHAPI_TOKEN;
@@ -236,18 +236,18 @@ async function sendWhatsAppMessage(poliza, message, tipo) {
             const res = await fetch('https://gate.whapi.cloud/messages/text', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${whapiToken}`,
+                    'Authorization': \`Bearer \${whapiToken}\`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     typing_time: 0,
-                    to: `${cleanPhone}@s.whatsapp.net`,
+                    to: \`\${cleanPhone}@s.whatsapp.net\`,
                     body: message
                 }),
                 signal: AbortSignal.timeout(8000)
             });
             await res.text(); // Free up the socket stream
-            console.log(`Mensaje enviado exitosamente a Whapi API para ${cleanPhone}`);
+            console.log(\`Mensaje enviado exitosamente a Whapi API para \${cleanPhone}\`);
         } catch (e) {
             console.error("Error enviando por Whapi:", e);
         }
@@ -258,7 +258,7 @@ async function sendWhatsAppMessage(poliza, message, tipo) {
     // Insert into db log
     return new Promise((resolve) => {
         db.run(
-            `INSERT INTO message_logs (poliza_id, telefono, mensaje, tipo_aviso) VALUES (?, ?, ?, ?)`,
+            \`INSERT INTO message_logs (poliza_id, telefono, mensaje, tipo_aviso) VALUES (?, ?, ?, ?)\`,
             [poliza.id, poliza.telefono, message, tipo],
             (err) => {
                 if (err) console.error("Error logging message:", err);
@@ -284,16 +284,16 @@ async function processDailyNotifications() {
     return new Promise((resolve, reject) => {
         // Query finding all Pendiente policies where vto_cuota matches T-3, T, or T+3 AND doesn't pay by credit card
         db.all(
-            `SELECT * FROM polizas 
+            \`SELECT * FROM polizas 
              WHERE estado_pago = 'Pendiente' 
              AND forma_pago != 'Tarjeta de Crédito'
              AND (tipo_vehiculo != 'Motovehiculo' OR tipo_vehiculo IS NULL)
-             AND vto_cuota IN (?, ?, ?)`,
+             AND vto_cuota IN (?, ?, ?)\`,
             [targetTminus3, targetT, targetTplus3],
             async (err, rows) => {
                 if (err) return reject(err);
 
-                console.log(`Found ${rows.length} notifications to process for Automotores (Cuotas).`);
+                console.log(\`Found \${rows.length} notifications to process for Automotores (Cuotas).\`);
                 
                 let totalEnviados = 0;
 
@@ -306,13 +306,13 @@ async function processDailyNotifications() {
 
                     if (row.vto_cuota === targetTminus3) {
                         tipo = "Preventiva (T-3)";
-                        message = `Hola ${row.asegurado}, te recordamos que la cuota de tu póliza de seguro de ${row.compania} (Patente: ${row.patente}) está próxima a vencer el ${row.vto_cuota}.`;
+                        message = \`Hola \${row.asegurado}, te recordamos que la cuota de tu póliza de seguro de \${row.compania} (Patente: \${row.patente}) está próxima a vencer el \${row.vto_cuota}.\`;
                     } else if (row.vto_cuota === targetT) {
                         tipo = "Vencimiento (T)";
-                        message = `Hola ${row.asegurado}, te informamos que la cuota de tu póliza de seguro vence hoy.`;
+                        message = \`Hola \${row.asegurado}, te informamos que la cuota de tu póliza de seguro vence hoy.\`;
                     } else if (row.vto_cuota === targetTplus3) {
                         tipo = "Riesgo (T+3)";
-                        message = `Circula con cuidado, hace 3 días se venció la cuota de tu póliza de seguros (${row.compania} - Patente: ${row.patente}).`;
+                        message = \`Circula con cuidado, hace 3 días se venció la cuota de tu póliza de seguros (\${row.compania} - Patente: \${row.patente}).\`;
                     }
 
                     await sendWhatsAppMessage(row, message, tipo);
@@ -320,20 +320,20 @@ async function processDailyNotifications() {
                 
                 // --- SEGUNDA VERIFICACIÓN: MOTOVEHÍCULOS (RENOVACIÓN DE PÓLIZA) ---
                 db.all(
-                    `SELECT * FROM polizas 
+                    \`SELECT * FROM polizas 
                      WHERE tipo_vehiculo = 'Motovehiculo' 
-                     AND vto_poliza = ?`,
+                     AND vto_poliza = ?\`,
                     [targetTminus3],
                     async (errMotos, rowsMotos) => {
                         if (errMotos) return reject(errMotos);
                         
-                        console.log(`Found ${rowsMotos.length} renewal notifications for Motovehiculos.`);
+                        console.log(\`Found \${rowsMotos.length} renewal notifications for Motovehiculos.\`);
                         
                         for (const row of rowsMotos) {
                             if (!row.telefono) continue;
                             totalEnviados++;
                             const tipoMsg = "Renovación Moto (T-3)";
-                            const msg = `Hola ${row.asegurado}, te informamos que dentro de 3 días se vence tu póliza de seguro de moto (${row.compania} - Patente: ${row.patente || 'S/N'}). ¿Deseas renovarla?`;
+                            const msg = \`Hola \${row.asegurado}, te informamos que dentro de 3 días se vence tu póliza de seguro de moto (\${row.compania} - Patente: \${row.patente || 'S/N'}). ¿Deseas renovarla?\`;
                             await sendWhatsAppMessage(row, msg, tipoMsg);
                         }
                         
@@ -351,7 +351,7 @@ cron.schedule('0 9 * * *', async () => {
         const total = await processDailyNotifications();
         await sendWhatsAppMessage(
             { id: 0, telefono: "5493874655897" }, 
-            `🤖 *Sofía AI - Reporte Matutino*\n\nBuen día Claudio! ☀️\nHe finalizado el barrido automátic de notificaciones.\nSe enviaron exitosamente *${total}* recordatorios a tus clientes el día de hoy.`, 
+            \`🤖 *Sofía AI - Reporte Matutino*\n\nBuen día Claudio! ☀️\nHe finalizado el barrido automático de notificaciones.\nSe enviaron exitosamente *\${total}* recordatorios a tus clientes el día de hoy.\`, 
             "Reporte Admin"
         );
     } catch(err) {
@@ -367,5 +367,5 @@ cron.schedule('0 9 * * *', async () => {
 // ----------------------------------------------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Carga de Pólizas CRM is running on http://localhost:${PORT}`);
+    console.log(\`Carga de Pólizas CRM is running on http://localhost:\${PORT}\`);
 });

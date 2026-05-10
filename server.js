@@ -97,11 +97,11 @@ function sendVencidosResponse(req, res, minDays, maxDays) {
 // Sandra: T to T-10
 app.get('/api/sandra', (req, res) => sendVencidosResponse(req, res, 0, 10));
 
-// Rocio: T-11 to T-20
-app.get('/api/rocio', (req, res) => sendVencidosResponse(req, res, 11, 20));
+// Rocio: T-11 to T-23
+app.get('/api/rocio', (req, res) => sendVencidosResponse(req, res, 11, 23));
 
-// Agustin: T-21 to T-30
-app.get('/api/agustin', (req, res) => sendVencidosResponse(req, res, 21, 30));
+// Agustin: T-24 to T-38
+app.get('/api/agustin', (req, res) => sendVencidosResponse(req, res, 24, 38));
 
 // Patricia: T-31 and beyond
 app.get('/api/patricia', (req, res) => sendVencidosResponse(req, res, 31, null));
@@ -130,12 +130,12 @@ app.get('/api/historico', (req, res) => {
 // Update a policy (e.g. mark as Paid)
 app.put('/api/polizas/:id', (req, res) => {
     const id = req.params.id;
-    const { estado_pago, vto_cuota, telefono, mail, forma_pago, tipo_vehiculo, vto_poliza, compania, nro_poliza, patente } = req.body;
+    const { estado_pago, vto_cuota, telefono, mail, forma_pago, tipo_vehiculo, vto_poliza, compania, nro_poliza, patente, asegurado } = req.body;
     
     // basic dynamic update
     db.run(
-        `UPDATE polizas SET estado_pago = ?, vto_cuota = ?, telefono = ?, mail = ?, forma_pago = ?, tipo_vehiculo = ?, vto_poliza = ?, compania = ?, nro_poliza = ?, patente = ? WHERE id = ?`,
-        [estado_pago, vto_cuota, telefono, mail, forma_pago, tipo_vehiculo, vto_poliza, compania, nro_poliza, patente, id],
+        `UPDATE polizas SET estado_pago = ?, vto_cuota = ?, telefono = ?, mail = ?, forma_pago = ?, tipo_vehiculo = ?, vto_poliza = ?, compania = ?, nro_poliza = ?, patente = ?, asegurado = ? WHERE id = ?`,
+        [estado_pago, vto_cuota, telefono, mail, forma_pago, tipo_vehiculo, vto_poliza, compania, nro_poliza, patente, asegurado, id],
         function(err) {
             if (err) return res.status(500).json({ error: err.message });
             res.json({ updated: this.changes });

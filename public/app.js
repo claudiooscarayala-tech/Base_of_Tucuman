@@ -103,7 +103,7 @@ async function fetchPolizas(query = '', dateValue = '') {
 
             tr.innerHTML = `
                 <td>
-                    <strong>${p.asegurado}</strong><br>
+                    <input type="text" value="${p.asegurado || ''}" class="status-select" id="asegurado-${p.id}" style="width: 150px; font-weight: bold;" placeholder="Nombre Asegurado..." /><br>
                     <small style="color: var(--text-secondary)">Reg: ${p.nro_registro || '-'}</small>
                 </td>
                 <td><input type="text" value="${p.telefono || ''}" class="status-select" id="phone-${p.id}" style="width: 120px;" placeholder="Ej: 54938..." /></td>
@@ -168,6 +168,7 @@ async function updatePoliza(id, prefix = '') {
     const ciaEl = document.getElementById(`${prefix}cia-${id}`);
     const polEl = document.getElementById(`${prefix}pol-${id}`);
     const patEl = document.getElementById(`${prefix}pat-${id}`);
+    const asegEl = document.getElementById(`${prefix}asegurado-${id}`);
     
     try {
         // Fetch current policy to retain other fields safely
@@ -187,6 +188,7 @@ async function updatePoliza(id, prefix = '') {
                 compania: ciaEl ? ciaEl.value : (current ? current.compania : ''),
                 nro_poliza: polEl ? polEl.value : (current ? current.nro_poliza : ''),
                 patente: patEl ? patEl.value : (current ? current.patente : ''),
+                asegurado: asegEl ? asegEl.value : (current ? current.asegurado : ''),
                 mail: current ? current.mail : ''
             })
         });
@@ -930,8 +932,8 @@ async function fetchHistorico(query = '') {
                     <span class="badge ${statusClass}">${p.estado_pago}</span>
                 </td>
                 <td>
-                    <button class="btn btn-warning" style="padding: 6px 12px; font-size: 0.8rem;" onclick="activarHistorico(${p.id})">
-                        Reactivar (Marcar Pagado)
+                    <button class="btn btn-warning" style="padding: 6px 12px; font-size: 0.8rem; background-color: #f8fafc; color: #1e293b; border: 1px solid #cbd5e1;" onclick="activarHistorico(${p.id})">
+                        Reactivar (Actualizar Fecha)
                     </button>
                 </td>
             `;
@@ -943,7 +945,7 @@ async function fetchHistorico(query = '') {
 }
 
 async function activarHistorico(id) {
-    if(!confirm('¿Estás seguro de reactivar esta póliza? (Se marcará como Pagado y volverá a la lista activa)')) return;
+    if(!confirm('¿Estás seguro de reactivar esta póliza? (Deberás ingresar la nueva fecha de vencimiento y volverá a la lista activa como Pendiente)')) return;
     
     try {
         const resCurrent = await fetch(`${API_URL}/historico?q=`);
@@ -951,13 +953,27 @@ async function activarHistorico(id) {
         const current = policies.find(x => x.id === id);
         if(!current) return;
         
+        // Calculate today's date in YYYY-MM-DD
+        const today = new Date().toLocaleString("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).split(',')[0];
+        
+        let newVtoCuota = current.vto_cuota;
+        const promptCuota = prompt("Ingrese la NUEVA fecha de vencimiento de la cuota (AAAA-MM-DD):", current.vto_cuota || today);
+        if (promptCuota === null) return; // User cancelled
+        newVtoCuota = promptCuota;
+
+        let newVtoPoliza = current.vto_poliza;
+        if (current.vto_poliza) {
+            const promptPoliza = prompt("Ingrese la NUEVA fecha de vencimiento de la póliza (AAAA-MM-DD):", current.vto_poliza);
+            if (promptPoliza !== null) newVtoPoliza = promptPoliza;
+        }
+
         const res = await fetch(`${API_URL}/polizas/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                estado_pago: 'Pagado', 
-                vto_cuota: current.vto_cuota,
-                vto_poliza: current.vto_poliza,
+                estado_pago: 'Pendiente', 
+                vto_cuota: newVtoCuota,
+                vto_poliza: newVtoPoliza,
                 forma_pago: current.forma_pago,
                 tipo_vehiculo: current.tipo_vehiculo,
                 telefono: current.telefono,
@@ -969,8 +985,9 @@ async function activarHistorico(id) {
         });
         
         if(res.ok) {
-            alert("Póliza reactivada con éxito.");
+            alert("Póliza reactivada con éxito. Ya figura en tus listas activas.");
             fetchHistorico();
+            if (typeof fetchPolizas === 'function') fetchPolizas();
         }
     } catch (e) {
         console.error("Error updating", e);

@@ -1,0 +1,14 @@
+{
+  "name": "coa-analytics",
+  "version": "1.0.0",
+  "description": "COA Broker Analytics Dashboard",
+  "main": "backend/server.js",
+  "scripts": {
+    "install": "cd backend && npm install && cd ../frontend && npm install",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

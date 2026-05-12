@@ -1,0 +1,11 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "cd app/frontend && npm install && npm run build && cd ../backend && npm install"
+
+[deploy]
+startCommand = "cd app/backend && node server.js"
+restartPolicyType = "ON_FAILURE"
+
+[env]
+PORT = "3000"
+DB_PATH = "/data/database.sqlite"

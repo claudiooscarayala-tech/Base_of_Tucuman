@@ -1,9 +1,13 @@
 {
-  "name": "estadisticas-de-oficina",
+  "name": "app-para-agencia-para-enviar-mensajes-a-clientes",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
+    "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -11,6 +15,11 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "node-cron": "^4.2.1",
+    "sqlite3": "^5.1.7",
     "xlsx": "^0.18.5"
   }
 }

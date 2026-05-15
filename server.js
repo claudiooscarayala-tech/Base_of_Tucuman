@@ -129,16 +129,11 @@ app.get('/api/historico', (req, res) => {
 
 // Endpoint to download the database backup
 app.get('/api/download-backup', (req, res) => {
-    // Determine the active database path
-    const dataPath = process.env.DATA_PATH;
-    const dbPath = dataPath ? path.resolve(dataPath, 'database.sqlite') : path.resolve(__dirname, 'database.sqlite');
-    res.download(dbPath, 'database_backup_railway.sqlite', (err) => {
-        if (err) {
-            console.error("Error downloading file:", err);
-            if (!res.headersSent) {
-                res.status(500).send("Error downloading database.");
-            }
-        }
+    res.json({
+        dataPath: process.env.DATA_PATH || "NOT_SET",
+        dirname: __dirname,
+        envKeys: Object.keys(process.env),
+        railwayVolume: process.env.RAILWAY_VOLUME_MOUNT_PATH
     });
 });
 

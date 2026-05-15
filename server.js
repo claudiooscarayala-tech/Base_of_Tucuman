@@ -4,6 +4,7 @@ const cors = require('cors');
 const cron = require('node-cron');
 const db = require('./database');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 app.use(cors());
@@ -129,12 +130,14 @@ app.get('/api/historico', (req, res) => {
 
 // Endpoint to download the database backup
 app.get('/api/download-backup', (req, res) => {
-    res.json({
-        dataPath: process.env.DATA_PATH || "NOT_SET",
-        dirname: __dirname,
-        envKeys: Object.keys(process.env),
-        railwayVolume: process.env.RAILWAY_VOLUME_MOUNT_PATH
-    });
+    const dataPath = process.env.DATA_PATH || __dirname;
+    const dbFilePath = path.resolve(dataPath, 'database.sqlite');
+    
+    if (require('fs').existsSync(dbFilePath)) {
+        res.download(dbFilePath, 'database_backup.sqlite');
+    } else {
+        res.status(404).json({ error: "Database file not found" });
+    }
 });
 
 // Update a policy (e.g. mark as Paid)
@@ -367,6 +370,65 @@ cron.schedule('0 9 * * *', async () => {
     } catch(err) {
         console.error("Cron Error: ", err);
     }
+}, {
+    timezone: "America/Argentina/Buenos_Aires"
+});
+
+
+// ----------------------------------------------------
+// AUTOMATIC DAILY BACKUP (23:00 HS)
+// ----------------------------------------------------
+async function performDailyBackup() {
+    console.log("Running Daily Database Task (Backup or Sync)...");
+    try {
+        const dataPath = process.env.DATA_PATH || __dirname;
+
+        // Si existe REMOTE_URL, entonces es la versión local y debe descargarse la base de la web
+        if (process.env.REMOTE_URL) {
+            console.log(`Descargando base de datos remota desde ${process.env.REMOTE_URL}/api/download-backup ...`);
+            const response = await fetch(`${process.env.REMOTE_URL}/api/download-backup`);
+            if (response.ok) {
+                const buffer = await response.arrayBuffer();
+                const syncPath = path.resolve(dataPath, 'database.sqlite');
+                fs.writeFileSync(syncPath, Buffer.from(buffer));
+                console.log("¡Base de datos local sincronizada exitosamente con la versión web!");
+            } else {
+                console.error("Error al descargar la base de datos remota. Status:", response.status);
+            }
+            return; // Termina aquí para no crear un backup local innecesario
+        }
+
+        const sourceDb = path.resolve(dataPath, 'database.sqlite');
+        
+        if (!fs.existsSync(sourceDb)) {
+            console.error("Backup Error: Source database not found at", sourceDb);
+            return;
+        }
+
+        const d = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" }));
+        const cleanDate = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
+        
+        const backupFilename = `database_backup_${cleanDate}.sqlite`;
+        const backupPath = path.resolve(dataPath, backupFilename);
+
+        fs.copyFileSync(sourceDb, backupPath);
+        console.log(`Backup successfully created at: ${backupPath}`);
+        
+        // Notify admin
+        await sendWhatsAppMessage(
+            { id: 0, telefono: "5493874655897" }, 
+            `💾 *Copia de Seguridad Exitosa*\nSe creó el respaldo diario:\n${backupFilename}`, 
+            "Reporte Admin"
+        );
+
+    } catch (e) {
+        console.error("Backup Error:", e);
+    }
+}
+
+// Backup crontab every day at 23:00 (Buenos Aires Time)
+cron.schedule('0 23 * * *', async () => {
+    await performDailyBackup();
 }, {
     timezone: "America/Argentina/Buenos_Aires"
 });

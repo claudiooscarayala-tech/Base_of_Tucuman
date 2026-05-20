@@ -438,6 +438,6 @@ cron.schedule('0 23 * * *', async () => {
 // START SERVER
 // ----------------------------------------------------
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Carga de Pólizas CRM is running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Carga de Pólizas CRM is running on port ${PORT}`);
 });

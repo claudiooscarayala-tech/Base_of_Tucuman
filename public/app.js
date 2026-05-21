@@ -346,6 +346,7 @@ async function updateSandra(id) {
                 compania: current ? current.compania : '',
                 nro_poliza: current ? current.nro_poliza : '',
                 patente: current ? current.patente : '',
+                asegurado: current ? current.asegurado : '',
                 mail: current ? current.mail : ''
             })
         });
@@ -508,6 +509,7 @@ async function updateRocio(id) {
                 compania: current ? current.compania : '',
                 nro_poliza: current ? current.nro_poliza : '',
                 patente: current ? current.patente : '',
+                asegurado: current ? current.asegurado : '',
                 mail: current ? current.mail : ''
             })
         });
@@ -670,6 +672,7 @@ async function updateAgustin(id) {
                 compania: current ? current.compania : '',
                 nro_poliza: current ? current.nro_poliza : '',
                 patente: current ? current.patente : '',
+                asegurado: current ? current.asegurado : '',
                 mail: current ? current.mail : ''
             })
         });
@@ -832,6 +835,7 @@ async function updatePatricia(id) {
                 compania: current ? current.compania : '',
                 nro_poliza: current ? current.nro_poliza : '',
                 patente: current ? current.patente : '',
+                asegurado: current ? current.asegurado : '',
                 mail: current ? current.mail : ''
             })
         });
@@ -878,6 +882,7 @@ async function enviarHistorico(id) {
                 compania: current.compania,
                 nro_poliza: current.nro_poliza,
                 patente: current.patente,
+                asegurado: current.asegurado,
                 mail: current.mail
             })
         });

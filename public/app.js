@@ -108,7 +108,12 @@ async function fetchPolizas(query = '', dateValue = '') {
                 </td>
                 <td><input type="text" value="${p.telefono || ''}" class="status-select" id="phone-${p.id}" style="width: 120px;" placeholder="Ej: 54938..." /></td>
                 <td><input type="text" value="${p.compania || ''}" class="status-select" id="cia-${p.id}" style="width: 100px;" placeholder="Cía..." /></td>
-                <td><input type="text" value="${p.nro_poliza || ''}" class="status-select" id="pol-${p.id}" style="width: 100px;" placeholder="Póliza..." /></td>
+                <td>
+                    <div style="display: flex; align-items: center;">
+                        <input type="text" value="${p.nro_poliza || ''}" class="status-select" id="pol-${p.id}" style="width: 100px;" placeholder="Póliza..." />
+                        <button class="btn-orange" onclick="sendManualT3(${p.id})" title="Enviar T-3 Manual (Frente, Mercosur, Cupón)"></button>
+                    </div>
+                </td>
                 <td><input type="text" value="${p.patente || ''}" class="status-select" id="pat-${p.id}" style="width: 80px;" placeholder="Patente..." /></td>
                 <td>
                     <select class="status-select" id="tipo-${p.id}" style="width: 110px;">
@@ -117,7 +122,10 @@ async function fetchPolizas(query = '', dateValue = '') {
                     </select>
                 </td>
                 <td>
-                    <input type="date" value="${dateStr}" class="status-select" id="date-${p.id}" />
+                    <div style="display: flex; align-items: center;">
+                        <input type="date" value="${dateStr}" class="status-select" id="date-${p.id}" />
+                        <button class="btn-orange" onclick="sendManualCupon(${p.id})" title="Enviar Solo Cupón Manual"></button>
+                    </div>
                 </td>
                 <td>
                     <input type="date" value="${datePolStr}" class="status-select" id="vtopol-${p.id}" />
@@ -1229,3 +1237,39 @@ async function verMensajes(id) {
     }
 }
 window.verMensajes = verMensajes;
+
+async function sendManualT3(id) {
+    if (!confirm("¿Enviar los 3 documentos de T-3 a este cliente ahora?")) return;
+    
+    try {
+        const res = await fetch(`${API_URL}/polizas/${id}/send-t3`, { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+            alert("¡Documentos T-3 enviados exitosamente!");
+        } else {
+            alert("Error: " + (data.error || "No se pudo enviar."));
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Error de red al intentar enviar.");
+    }
+}
+window.sendManualT3 = sendManualT3;
+
+async function sendManualCupon(id) {
+    if (!confirm("¿Enviar el Cupón de Pago a este cliente ahora?")) return;
+    
+    try {
+        const res = await fetch(`${API_URL}/polizas/${id}/send-cupon`, { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+            alert("¡Cupón enviado exitosamente!");
+        } else {
+            alert("Error: " + (data.error || "No se pudo enviar."));
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Error de red al intentar enviar.");
+    }
+}
+window.sendManualCupon = sendManualCupon;

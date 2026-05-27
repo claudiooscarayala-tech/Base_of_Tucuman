@@ -439,3 +439,25 @@ body {
 #cardFpCBU .kpi-icon { background: #ef4444; }
 #cardFpTarjeta { border-top-color: #f59e0b; }
 #cardFpTarjeta .kpi-icon { background: #f59e0b; }
+
+.btn-orange {
+    background-color: #f97316;
+    border-color: #ea580c;
+    color: transparent;
+    border-radius: 50%;
+    width: 12px;
+    height: 12px;
+    padding: 0;
+    display: inline-block;
+    border: none;
+    cursor: pointer;
+    margin-left: 6px;
+    vertical-align: middle;
+    transition: transform 0.2s, background-color 0.2s;
+    outline: none;
+}
+.btn-orange:hover {
+    transform: scale(1.3);
+    background-color: #ea580c;
+}
+

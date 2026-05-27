@@ -143,12 +143,12 @@ app.get('/api/download-backup', (req, res) => {
 // Update a policy (e.g. mark as Paid)
 app.put('/api/polizas/:id', (req, res) => {
     const id = req.params.id;
-    const { estado_pago, vto_cuota, telefono, mail, forma_pago, tipo_vehiculo, vto_poliza, compania, nro_poliza, patente, asegurado } = req.body;
+    const { estado_pago, vto_cuota, telefono, mail, forma_pago, tipo_vehiculo, vto_poliza, compania, nro_poliza, patente, asegurado, nro_endoso } = req.body;
     
     // basic dynamic update
     db.run(
-        `UPDATE polizas SET estado_pago = ?, vto_cuota = ?, telefono = ?, mail = ?, forma_pago = ?, tipo_vehiculo = ?, vto_poliza = ?, compania = ?, nro_poliza = ?, patente = ?, asegurado = ? WHERE id = ?`,
-        [estado_pago, vto_cuota, telefono, mail, forma_pago, tipo_vehiculo, vto_poliza, compania, nro_poliza, patente, asegurado, id],
+        `UPDATE polizas SET estado_pago = ?, vto_cuota = ?, telefono = ?, mail = ?, forma_pago = ?, tipo_vehiculo = ?, vto_poliza = ?, compania = ?, nro_poliza = ?, patente = ?, asegurado = ?, nro_endoso = ? WHERE id = ?`,
+        [estado_pago, vto_cuota, telefono, mail, forma_pago, tipo_vehiculo, vto_poliza, compania, nro_poliza, patente, asegurado, nro_endoso || '0', id],
         function(err) {
             if (err) return res.status(500).json({ error: err.message });
             res.json({ updated: this.changes });
@@ -158,11 +158,11 @@ app.put('/api/polizas/:id', (req, res) => {
 
 // Add a new policy
 app.post('/api/polizas', (req, res) => {
-    const { nro_registro, asegurado, telefono, mail, compania, nro_poliza, patente, vto_cuota, forma_pago, tipo_vehiculo, vto_poliza } = req.body;
+    const { nro_registro, asegurado, telefono, mail, compania, nro_poliza, patente, vto_cuota, forma_pago, tipo_vehiculo, vto_poliza, nro_endoso } = req.body;
     db.run(
-        `INSERT INTO polizas (nro_registro, asegurado, telefono, mail, compania, nro_poliza, patente, vto_cuota, estado_pago, forma_pago, tipo_vehiculo, vto_poliza)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pendiente', ?, ?, ?)`,
-         [nro_registro, asegurado, telefono, mail, compania, nro_poliza, patente, vto_cuota, forma_pago || 'Efectivo con cupón', tipo_vehiculo || 'Automotor', vto_poliza],
+        `INSERT INTO polizas (nro_registro, asegurado, telefono, mail, compania, nro_poliza, patente, vto_cuota, estado_pago, forma_pago, tipo_vehiculo, vto_poliza, nro_endoso)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pendiente', ?, ?, ?, ?)`,
+         [nro_registro, asegurado, telefono, mail, compania, nro_poliza, patente, vto_cuota, forma_pago || 'Efectivo con cupón', tipo_vehiculo || 'Automotor', vto_poliza, nro_endoso || '0'],
          function(err) {
             if (err) return res.status(500).json({ error: err.message });
             res.json({ id: this.lastID });
@@ -233,6 +233,146 @@ function addDays(date, days) {
     const result = new Date(date);
     result.setDate(result.getDate() + days);
     return result.toISOString().split('T')[0];
+}
+
+async function downloadDignaPDF(nro_poliza, tipo_vehiculo, nro_endoso = 0, documentTypes = ['CuponPagoCompleto']) {
+    console.log(`Consultando Digna para Póliza ${nro_poliza}, Endoso ${nro_endoso}, Tipos: ${documentTypes.join(', ')}`);
+    try {
+        const xmlBody = `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns="http://DCX/Emision/">
+  <soapenv:Header>
+        <UserCredentials>
+            <IdUsuario>DCX_WS</IdUsuario>
+            <Password>DCX_WS123</Password>
+        </UserCredentials>
+  </soapenv:Header>
+  <soapenv:Body>
+    <ConsultaDocumentoPolizaWeb>
+      <CodigoSeccion>6</CodigoSeccion>
+      <NumeroPoliza>${nro_poliza}</NumeroPoliza>
+      <NumeroEndoso>${nro_endoso}</NumeroEndoso>
+    </ConsultaDocumentoPolizaWeb>
+  </soapenv:Body>
+</soapenv:Envelope>`;
+
+        const response = await fetch('https://portalweb.digna.seg.ar/WS/emision.asmx?op=ConsultaDocumentoPolizaWeb', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/xml; charset=utf-8',
+                'SOAPAction': 'http://DCX/Emision/ConsultaDocumentoPolizaWeb'
+            },
+            body: xmlBody,
+            signal: AbortSignal.timeout(30000)
+        });
+
+        if (!response.ok) {
+            console.error(`Digna API Error: ${response.status} ${response.statusText}`);
+            return null;
+        }
+
+        const responseText = await response.text();
+        
+        // Check if Resultado is OK
+        if (!responseText.includes('<Resultado>OK</Resultado>')) {
+            console.error('Digna API Error: Resultado no es OK para la póliza', nro_poliza);
+            return null;
+        }
+
+        // Extract all <string> URLs
+        const urlMatches = [...responseText.matchAll(/<string>(http[^<]+\.pdf)<\/string>/g)];
+        if (urlMatches.length === 0) {
+            console.error('No se encontraron URLs de PDFs en la respuesta de Digna');
+            return null;
+        }
+
+        const pdfUrls = urlMatches.map(m => m[1]);
+        const downloadedDocs = [];
+
+        for (const docType of documentTypes) {
+            let targetUrl = pdfUrls.find(url => url.includes(docType));
+            
+            // Fallback para CuponPagoCompleto si no existe (algunas veces se usa FrenteDePoliza)
+            if (!targetUrl && docType === 'CuponPagoCompleto') {
+                targetUrl = pdfUrls.find(url => url.includes('FrenteDePoliza')) || pdfUrls[0];
+            }
+
+            if (!targetUrl) continue;
+
+            console.log(`Descargando PDF ${docType} desde URL: ${targetUrl}`);
+            
+            const pdfResponse = await fetch(targetUrl);
+            if (!pdfResponse.ok) {
+                console.error(`Error descargando el PDF de Digna desde URL: ${targetUrl}`);
+                continue;
+            }
+
+            const pdfBuffer = await pdfResponse.arrayBuffer();
+            const base64Pdf = Buffer.from(pdfBuffer).toString('base64');
+
+            if (base64Pdf) {
+                const tempDir = path.join(__dirname, 'temp_pdfs');
+                if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
+                
+                const urlParts = targetUrl.split('/');
+                const originalFileName = urlParts[urlParts.length - 1];
+                const fileName = `Digna_${nro_poliza}_${nro_endoso || 0}_${originalFileName}`;
+                
+                const filePath = path.join(tempDir, fileName);
+                fs.writeFileSync(filePath, Buffer.from(base64Pdf, 'base64'));
+                
+                downloadedDocs.push({ filePath, fileName, base64: base64Pdf });
+            }
+        }
+        
+        return downloadedDocs.length > 0 ? downloadedDocs : null;
+    } catch (e) {
+        console.error('Excepción al descargar de Digna:', e.message);
+        return null;
+    }
+}
+
+async function sendWhatsAppDocument(poliza, message, tipo, documentData) {
+    console.log(`[WhatsApp Document -> ${poliza.telefono}] ${message}`);
+
+    const whapiToken = process.env.WHAPI_TOKEN;
+    if (whapiToken && poliza.telefono) {
+        try {
+            let cleanPhone = poliza.telefono.replace(/\D/g, '');
+            
+            const payload = {
+                to: `${cleanPhone}@s.whatsapp.net`,
+                caption: message,
+                media: `data:application/pdf;base64,${documentData.base64}`,
+                file_name: documentData.fileName
+            };
+
+            const res = await fetch('https://gate.whapi.cloud/messages/document', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${whapiToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload),
+                signal: AbortSignal.timeout(15000)
+            });
+            await res.text();
+            console.log(`Documento enviado exitosamente a Whapi API para ${cleanPhone}`);
+        } catch (e) {
+            console.error("Error enviando documento por Whapi:", e);
+        }
+    } else {
+        console.log("Simulado: (WHAPI_TOKEN no configurado o teléfono faltante)");
+    }
+
+    return new Promise((resolve) => {
+        db.run(
+            `INSERT INTO message_logs (poliza_id, telefono, mensaje, tipo_aviso) VALUES (?, ?, ?, ?)`,
+            [poliza.id, poliza.telefono, message, tipo + ' (con PDF)'],
+            (err) => {
+                if (err) console.error("Error logging message:", err);
+                resolve();
+            }
+        );
+    });
 }
 
 async function sendWhatsAppMessage(poliza, message, tipo) {
@@ -328,7 +468,22 @@ async function processDailyNotifications() {
                         message = `Circula con cuidado, hace 3 días se venció la cuota de tu póliza de seguros (${row.compania} - Patente: ${row.patente}).`;
                     }
 
-                    await sendWhatsAppMessage(row, message, tipo);
+                    // Attempt to download PDFs if it's Digna and it's T-3
+                    let pdfDatas = null;
+                    if (row.compania && row.compania.toUpperCase().includes('DIGNA') && row.nro_poliza && row.vto_cuota === targetTminus3) {
+                        pdfDatas = await downloadDignaPDF(row.nro_poliza, row.tipo_vehiculo, row.nro_endoso, ['FrenteDePoliza', 'Mercosur', 'CuponPagoCompleto']);
+                    }
+
+                    if (pdfDatas && pdfDatas.length > 0) {
+                        // Enviar el primer PDF con el mensaje como caption
+                        await sendWhatsAppDocument(row, message, tipo, pdfDatas[0]);
+                        // Enviar el resto de PDFs sin mensaje
+                        for (let i = 1; i < pdfDatas.length; i++) {
+                            await sendWhatsAppDocument(row, "", tipo, pdfDatas[i]);
+                        }
+                    } else {
+                        await sendWhatsAppMessage(row, message, tipo);
+                    }
                 }
                 
                 // --- SEGUNDA VERIFICACIÓN: MOTOVEHÍCULOS (RENOVACIÓN DE PÓLIZA) ---
@@ -347,7 +502,20 @@ async function processDailyNotifications() {
                             totalEnviados++;
                             const tipoMsg = "Renovación Moto (T-3)";
                             const msg = `Hola ${row.asegurado}, te informamos que dentro de 3 días se vence tu póliza de seguro de moto (${row.compania} - Patente: ${row.patente || 'S/N'}). ¿Deseas renovarla?`;
-                            await sendWhatsAppMessage(row, msg, tipoMsg);
+                            
+                            let pdfDatas = null;
+                            if (row.compania && row.compania.toUpperCase().includes('DIGNA') && row.nro_poliza) {
+                                pdfDatas = await downloadDignaPDF(row.nro_poliza, row.tipo_vehiculo, row.nro_endoso, ['FrenteDePoliza', 'Mercosur', 'CuponPagoCompleto']);
+                            }
+
+                            if (pdfDatas && pdfDatas.length > 0) {
+                                await sendWhatsAppDocument(row, msg, tipoMsg, pdfDatas[0]);
+                                for (let i = 1; i < pdfDatas.length; i++) {
+                                    await sendWhatsAppDocument(row, "", tipoMsg, pdfDatas[i]);
+                                }
+                            } else {
+                                await sendWhatsAppMessage(row, msg, tipoMsg);
+                            }
                         }
                         
                         resolve(totalEnviados);
@@ -383,19 +551,49 @@ async function performDailyBackup() {
     try {
         const dataPath = process.env.DATA_PATH || __dirname;
 
+        // Formatear fecha para el nombre del backup
+        const d = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" }));
+        const cleanDate = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
+        
         // Si existe REMOTE_URL, entonces es la versión local y debe descargarse la base de la web
         if (process.env.REMOTE_URL) {
             console.log(`Descargando base de datos remota desde ${process.env.REMOTE_URL}/api/download-backup ...`);
             const response = await fetch(`${process.env.REMOTE_URL}/api/download-backup`);
             if (response.ok) {
                 const buffer = await response.arrayBuffer();
+                
+                // 1. Sincronizar la versión local principal
                 const syncPath = path.resolve(dataPath, 'database.sqlite');
                 fs.writeFileSync(syncPath, Buffer.from(buffer));
                 console.log("¡Base de datos local sincronizada exitosamente con la versión web!");
+                
+                // 2. Crear backup histórico local
+                const backupsDir = path.resolve(dataPath, 'backups');
+                if (!fs.existsSync(backupsDir)) {
+                    fs.mkdirSync(backupsDir);
+                }
+                const backupFilename = `database_backup_${cleanDate}.sqlite`;
+                const backupPath = path.resolve(backupsDir, backupFilename);
+                fs.writeFileSync(backupPath, Buffer.from(buffer));
+                console.log(`Backup local guardado en: ${backupPath}`);
+                
+                // 3. Limpiar backups antiguos (mantener solo los últimos 3)
+                const files = fs.readdirSync(backupsDir)
+                                .filter(f => f.startsWith('database_backup_') && f.endsWith('.sqlite'))
+                                .map(f => ({ name: f, time: fs.statSync(path.resolve(backupsDir, f)).mtime.getTime() }))
+                                .sort((a, b) => b.time - a.time); // Ordenar de más reciente a más antiguo
+                                
+                if (files.length > 3) {
+                    const filesToDelete = files.slice(3);
+                    filesToDelete.forEach(file => {
+                        fs.unlinkSync(path.resolve(backupsDir, file.name));
+                        console.log(`Backup antiguo eliminado: ${file.name}`);
+                    });
+                }
             } else {
                 console.error("Error al descargar la base de datos remota. Status:", response.status);
             }
-            return; // Termina aquí para no crear un backup local innecesario
+            return; // Termina aquí para que no siga con la lógica del servidor web
         }
 
         const sourceDb = path.resolve(dataPath, 'database.sqlite');
@@ -405,9 +603,6 @@ async function performDailyBackup() {
             return;
         }
 
-        const d = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" }));
-        const cleanDate = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
-        
         const backupFilename = `database_backup_${cleanDate}.sqlite`;
         const backupPath = path.resolve(dataPath, backupFilename);
 
@@ -433,6 +628,54 @@ cron.schedule('0 23 * * *', async () => {
     timezone: "America/Argentina/Buenos_Aires"
 });
 
+
+// ----------------------------------------------------
+// MANUAL SEND ENDPOINTS
+// ----------------------------------------------------
+
+app.post('/api/polizas/:id/send-t3', (req, res) => {
+    const id = req.params.id;
+    db.get(`SELECT * FROM polizas WHERE id = ?`, [id], async (err, row) => {
+        if (err || !row) return res.status(404).json({ error: "Póliza no encontrada" });
+        if (!row.telefono) return res.status(400).json({ error: "No hay teléfono" });
+        
+        try {
+            if (row.compania && row.compania.toUpperCase().includes('DIGNA') && row.nro_poliza) {
+                const pdfDatas = await downloadDignaPDF(row.nro_poliza, row.tipo_vehiculo, row.nro_endoso, ['FrenteDePoliza', 'Mercosur', 'CuponPagoCompleto']);
+                if (pdfDatas && pdfDatas.length > 0) {
+                    for (const pdf of pdfDatas) {
+                        await sendWhatsAppDocument(row, "", "Manual T-3", pdf);
+                    }
+                    return res.json({ success: true, message: "Documentos T-3 enviados." });
+                }
+            }
+            res.status(400).json({ error: "No se pudieron obtener documentos de Digna o la compañía no es Digna." });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+});
+
+app.post('/api/polizas/:id/send-cupon', (req, res) => {
+    const id = req.params.id;
+    db.get(`SELECT * FROM polizas WHERE id = ?`, [id], async (err, row) => {
+        if (err || !row) return res.status(404).json({ error: "Póliza no encontrada" });
+        if (!row.telefono) return res.status(400).json({ error: "No hay teléfono" });
+        
+        try {
+            if (row.compania && row.compania.toUpperCase().includes('DIGNA') && row.nro_poliza) {
+                const pdfDatas = await downloadDignaPDF(row.nro_poliza, row.tipo_vehiculo, row.nro_endoso, ['CuponPagoCompleto']);
+                if (pdfDatas && pdfDatas.length > 0) {
+                    await sendWhatsAppDocument(row, "", "Manual Cupón", pdfDatas[0]);
+                    return res.json({ success: true, message: "Cupón enviado." });
+                }
+            }
+            res.status(400).json({ error: "No se pudieron obtener documentos de Digna o la compañía no es Digna." });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+});
 
 // ----------------------------------------------------
 // START SERVER

@@ -143,12 +143,12 @@ app.get('/api/download-backup', (req, res) => {
 // Update a policy (e.g. mark as Paid)
 app.put('/api/polizas/:id', (req, res) => {
     const id = req.params.id;
-    const { estado_pago, vto_cuota, telefono, mail, forma_pago, tipo_vehiculo, vto_poliza, compania, nro_poliza, patente, asegurado, nro_endoso } = req.body;
+    const { estado_pago, vto_cuota, telefono, mail, forma_pago, tipo_vehiculo, vto_poliza, compania, nro_poliza, patente, asegurado } = req.body;
     
     // basic dynamic update
     db.run(
-        `UPDATE polizas SET estado_pago = ?, vto_cuota = ?, telefono = ?, mail = ?, forma_pago = ?, tipo_vehiculo = ?, vto_poliza = ?, compania = ?, nro_poliza = ?, patente = ?, asegurado = ?, nro_endoso = ? WHERE id = ?`,
-        [estado_pago, vto_cuota, telefono, mail, forma_pago, tipo_vehiculo, vto_poliza, compania, nro_poliza, patente, asegurado, nro_endoso || '0', id],
+        `UPDATE polizas SET estado_pago = ?, vto_cuota = ?, telefono = ?, mail = ?, forma_pago = ?, tipo_vehiculo = ?, vto_poliza = ?, compania = ?, nro_poliza = ?, patente = ?, asegurado = ? WHERE id = ?`,
+        [estado_pago, vto_cuota, telefono, mail, forma_pago, tipo_vehiculo, vto_poliza, compania, nro_poliza, patente, asegurado, id],
         function(err) {
             if (err) return res.status(500).json({ error: err.message });
             res.json({ updated: this.changes });
@@ -158,11 +158,11 @@ app.put('/api/polizas/:id', (req, res) => {
 
 // Add a new policy
 app.post('/api/polizas', (req, res) => {
-    const { nro_registro, asegurado, telefono, mail, compania, nro_poliza, patente, vto_cuota, forma_pago, tipo_vehiculo, vto_poliza, nro_endoso } = req.body;
+    const { nro_registro, asegurado, telefono, mail, compania, nro_poliza, patente, vto_cuota, forma_pago, tipo_vehiculo, vto_poliza } = req.body;
     db.run(
-        `INSERT INTO polizas (nro_registro, asegurado, telefono, mail, compania, nro_poliza, patente, vto_cuota, estado_pago, forma_pago, tipo_vehiculo, vto_poliza, nro_endoso)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pendiente', ?, ?, ?, ?)`,
-         [nro_registro, asegurado, telefono, mail, compania, nro_poliza, patente, vto_cuota, forma_pago || 'Efectivo con cupón', tipo_vehiculo || 'Automotor', vto_poliza, nro_endoso || '0'],
+        `INSERT INTO polizas (nro_registro, asegurado, telefono, mail, compania, nro_poliza, patente, vto_cuota, estado_pago, forma_pago, tipo_vehiculo, vto_poliza)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pendiente', ?, ?, ?)`,
+         [nro_registro, asegurado, telefono, mail, compania, nro_poliza, patente, vto_cuota, forma_pago || 'Efectivo con cupón', tipo_vehiculo || 'Automotor', vto_poliza],
          function(err) {
             if (err) return res.status(500).json({ error: err.message });
             res.json({ id: this.lastID });

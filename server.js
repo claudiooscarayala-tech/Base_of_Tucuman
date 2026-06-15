@@ -470,9 +470,11 @@ async function processDailyNotifications() {
 
                     // Attempt to download PDFs if it's Digna and it's T-3
                     let pdfDatas = null;
+                    /* SUSPENDIDO HASTA NUEVA ORDEN
                     if (row.compania && row.compania.toUpperCase().includes('DIGNA') && row.nro_poliza && row.vto_cuota === targetTminus3) {
                         pdfDatas = await downloadDignaPDF(row.nro_poliza, row.tipo_vehiculo, row.nro_endoso, ['FrenteDePoliza', 'Mercosur', 'CuponPagoCompleto']);
                     }
+                    */
 
                     if (pdfDatas && pdfDatas.length > 0) {
                         // Enviar el primer PDF con el mensaje como caption
@@ -504,9 +506,11 @@ async function processDailyNotifications() {
                             const msg = `Hola ${row.asegurado}, te informamos que dentro de 3 días se vence tu póliza de seguro de moto (${row.compania} - Patente: ${row.patente || 'S/N'}). ¿Deseas renovarla?`;
                             
                             let pdfDatas = null;
+                            /* SUSPENDIDO HASTA NUEVA ORDEN
                             if (row.compania && row.compania.toUpperCase().includes('DIGNA') && row.nro_poliza) {
                                 pdfDatas = await downloadDignaPDF(row.nro_poliza, row.tipo_vehiculo, row.nro_endoso, ['FrenteDePoliza', 'Mercosur', 'CuponPagoCompleto']);
                             }
+                            */
 
                             if (pdfDatas && pdfDatas.length > 0) {
                                 await sendWhatsAppDocument(row, msg, tipoMsg, pdfDatas[0]);

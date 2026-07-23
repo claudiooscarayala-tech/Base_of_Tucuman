@@ -210,6 +210,10 @@ app.get('/api/polizas/:id/logs', (req, res) => {
 
 // Manual trigger for the notification engine (for testing)
 app.post('/api/trigger-notifications', async (req, res) => {
+    // SUSPENDIDO HASTA NUEVA ORDEN DEBIDO A BLOQUEO DE WHATSAPP
+    return res.json({ message: 'El envío automático de mensajes está suspendido temporalmente por bloqueo de WhatsApp', total: 0 });
+    
+    /*
     try {
         const total = await processDailyNotifications();
         // Notify admin remotely
@@ -222,6 +226,7 @@ app.post('/api/trigger-notifications', async (req, res) => {
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
+    */
 });
 
 
@@ -530,7 +535,8 @@ async function processDailyNotifications() {
     });
 }
 
-// Ensure crontab runs every morning at 09:00 AM (Buenos Aires Time)
+// INTERNAL CRON DISABLED TO PREVENT DUPLICATES WITH CRON-JOB.ORG
+/*
 cron.schedule('0 9 * * *', async () => {
     try {
         const total = await processDailyNotifications();
@@ -545,6 +551,7 @@ cron.schedule('0 9 * * *', async () => {
 }, {
     timezone: "America/Argentina/Buenos_Aires"
 });
+*/
 
 
 // ----------------------------------------------------
